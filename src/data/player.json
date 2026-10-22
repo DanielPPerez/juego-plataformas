@@ -12,7 +12,10 @@
   "apexGravityMultiplier": 0.5,
   "coyoteTimeMs": 100,
   "jumpBufferMs": 100,
-  "dashSpeed": 380,
-  "dashDurationMs": 140,
+  "airJumps": 1,
+  "airJumpVelocity": 300,
+  "dropThroughMs": 200,
+  "dashSpeed": 500,
+  "dashDurationMs": 230,
   "dashCooldownMs": 450
 }

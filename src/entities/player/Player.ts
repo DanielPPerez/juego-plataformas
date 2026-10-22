@@ -8,6 +8,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   facing: 1 | -1 = 1;
   invulnerable = false;
+  // La escena lo actualiza cada frame: ¿los pies están sobre una plataforma atravesable?
+  standingOnOneWay = false;
 
   private coyoteTimer = 0;
   private jumpBufferTimer = 0;
@@ -16,6 +18,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private canAirDash = true;
   private wasOnFloor = false;
   private jumpCutAvailable = false;
+  private airJumpsLeft = 0;
+  private dropTimer = 0;
 
   // El sprite físico es invisible; el visual se deforma (squash) sin tocar la hitbox
   protected visual: Phaser.GameObjects.Image;
@@ -52,6 +56,11 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.dashTimer > 0;
   }
 
+  // Mientras es true, la escena ignora la colisión con plataformas atravesables
+  get isDropping(): boolean {
+    return this.dropTimer > 0;
+  }
+
   get onFloor(): boolean {
     return this.body.blocked.down;
   }
@@ -66,8 +75,12 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.coyoteTimer = this.onFloor ? cfg.coyoteTimeMs : this.coyoteTimer - dtMs;
     this.jumpBufferTimer -= dtMs;
     this.dashCooldownTimer -= dtMs;
+    this.dropTimer -= dtMs;
     if (this.controls.jumpPressed) this.jumpBufferTimer = cfg.jumpBufferMs;
-    if (this.onFloor) this.canAirDash = true;
+    if (this.onFloor) {
+      this.canAirDash = true;
+      this.airJumpsLeft = cfg.airJumps;
+    }
 
     if (!this.wasOnFloor && this.onFloor) this.squash(1.25, 0.8);
     this.wasOnFloor = this.onFloor;
@@ -99,13 +112,17 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       : (accelerating ? cfg.airAccel : cfg.airDecel);
     body.setVelocityX(approach(body.velocity.x, target, rate * dt));
 
-    // Salto con coyote time + jump buffer
-    if (this.jumpBufferTimer > 0 && this.coyoteTimer > 0) {
-      body.setVelocityY(-cfg.jumpVelocity);
-      this.jumpBufferTimer = 0;
-      this.coyoteTimer = 0;
-      this.jumpCutAvailable = true;
-      this.squash(0.75, 1.3);
+    // Abajo + salto sobre plataforma atravesable: bajar; si no, salto (coyote + buffer) o doble salto
+    if (this.jumpBufferTimer > 0) {
+      if (this.controls.downHeld && this.onFloor && this.standingOnOneWay) {
+        this.dropTimer = cfg.dropThroughMs;
+        this.jumpBufferTimer = 0;
+      } else if (this.coyoteTimer > 0) {
+        this.jump(cfg.jumpVelocity);
+      } else if (this.airJumpsLeft > 0) {
+        this.airJumpsLeft--;
+        this.jump(cfg.airJumpVelocity);
+      }
     }
 
     // Salto variable: soltar el botón corta la subida (una vez por salto)
@@ -124,6 +141,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     body.setVelocityY(Math.min(body.velocity.y + gravity * dt, cfg.maxFallSpeed));
 
     this.setFlipX(this.facing < 0);
+  }
+
+  private jump(velocity: number) {
+    this.body.setVelocityY(-velocity);
+    this.jumpBufferTimer = 0;
+    this.coyoteTimer = 0;
+    this.jumpCutAvailable = true;
+    this.squash(0.75, 1.3);
   }
 
   private squash(sx: number, sy: number) {

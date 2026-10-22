@@ -55,7 +55,8 @@ Inicio de run → Explorar nivel procedural → Enemigos / recompensas
 ## 5. Mecánicas del jugador
 
 - Movimiento: correr, saltar, salto variable, coyote time (~100 ms), jump buffer (~100 ms)
-- Extra (elegir **1**): dash / doble salto / wall jump
+- Extra: **dash** (con i-frames, 1 en el aire) + **doble salto** (decidido en la semana 1: sin él las plataformas altas quedaban fuera de alcance). Wall jump descartado.
+- Plataformas atravesables: se suben desde abajo; **Abajo (S/↓) + Salto** para bajar
 - Combate: Melee (Caballero) · Disparo (Mago)
 - Vida: 5 corazones · i-frames tras recibir daño
 - Controles: teclado (A/D o flechas para moverse, W/Espacio salto) + mouse (clic izq. ataque normal, clic der. habilidad). El aim del Mago sigue al cursor. Gamepad opcional en v1.1
@@ -64,7 +65,7 @@ Inicio de run → Explorar nivel procedural → Enemigos / recompensas
 
 **Método: chunks hechos a mano + ensamblado procedural (estilo Spelunky).**
 
-1. Diseñar salas de 1 pantalla en **Tiled** (exportar JSON).
+1. Diseñar salas de 1 pantalla (30×17 tiles) en ASCII (`scripts/rooms/`) → `npm run rooms` las convierte a JSON de **Tiled**, que se pueden seguir editando en Tiled.
 2. Cada sala tiene etiquetas de salidas: `L`, `R`, `U`, `D`.
 3. El generador crea una grilla (ej. 4×4) y traza un **camino garantizado** de inicio a salida.
 4. Rellena el camino con salas cuyas salidas encajen; el resto, con salas opcionales (cofres, desafíos).

@@ -6,6 +6,14 @@ Phaser 3 + TypeScript + Vite. Diseño en [docs/mini-gdd-plataformas-procedural.m
 
 - `npm run dev`: servidor de desarrollo
 - `npm run build`: build de producción en `dist/` (comprimir en zip para itch.io)
+- `npm test`: tests del generador (1000 seeds, todas completables)
+- `npm run rooms`: convierte las salas ASCII de `scripts/rooms/` a JSON de Tiled (`-- --force` para sobrescribir)
+
+Abre el juego con `?seed=abc` para repetir una run concreta.
+
+## Controles
+
+A/D o flechas: moverse · W/Espacio: saltar (doble salto en el aire) · Shift: dash · Abajo + Salto: bajar de una plataforma · F1: panel de ajuste · R: nueva run
 
 ## Carpetas
 

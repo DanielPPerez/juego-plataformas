@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 
-type KeyName = 'left' | 'right' | 'a' | 'd' | 'up' | 'w' | 'space' | 'shift';
+type KeyName = 'left' | 'right' | 'a' | 'd' | 'up' | 'w' | 'down' | 's' | 'space' | 'shift';
 
 // Traduce teclado + mouse a acciones del juego; el resto del código no conoce las teclas
 export class Input {
@@ -24,6 +24,8 @@ export class Input {
       d: kb.addKey(K.D),
       up: kb.addKey(K.UP),
       w: kb.addKey(K.W),
+      down: kb.addKey(K.DOWN),
+      s: kb.addKey(K.S),
       space: kb.addKey(K.SPACE),
       shift: kb.addKey(K.SHIFT),
     };
@@ -49,6 +51,10 @@ export class Input {
     const l = this.keys.left.isDown || this.keys.a.isDown;
     const r = this.keys.right.isDown || this.keys.d.isDown;
     return (r ? 1 : 0) - (l ? 1 : 0);
+  }
+
+  get downHeld(): boolean {
+    return this.keys.down.isDown || this.keys.s.isDown;
   }
 
   get jumpHeld(): boolean {
