@@ -1,0 +1,18 @@
+{
+  "maxRunSpeed": 150,
+  "groundAccel": 1400,
+  "groundDecel": 1800,
+  "airAccel": 1000,
+  "airDecel": 600,
+  "gravity": 1000,
+  "maxFallSpeed": 420,
+  "jumpVelocity": 330,
+  "jumpCutMultiplier": 0.4,
+  "apexThreshold": 40,
+  "apexGravityMultiplier": 0.5,
+  "coyoteTimeMs": 100,
+  "jumpBufferMs": 100,
+  "dashSpeed": 380,
+  "dashDurationMs": 140,
+  "dashCooldownMs": 450
+}
