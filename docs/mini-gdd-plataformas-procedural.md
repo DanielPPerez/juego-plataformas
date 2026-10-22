@@ -1,4 +1,4 @@
-# Mini GDD — [Nombre del juego]
+# Mini GDD — La Entidad Dividida (título provisional)
 
 > Documento vivo, máximo 3–4 páginas. Si algo no cabe aquí, no entra en la v1.
 > Stack: **Phaser 3 + TypeScript + Vite** · Plataforma: navegador (desktop primero, móvil después)
@@ -139,7 +139,8 @@ Criaturas de los relatos originales de Lovecraft, adaptadas a lo medieval.
 | Sello arcano    | Reduce el cooldown de la habilidad en 25%            |
 | Sangre maldita  | +daño con 1 corazón                                |
 
-- Se eligen **1 de 3** a la mitad y al final de cada nivel.
+- Se eligen **1 de 3** a la mitad y al final de cada nivel. Implementadas 9 (`upgrades.json`); **Proyectil extra** y **Sello arcano** esperan a que existan los proyectiles y la habilidad especial (clic derecho), que aún no está definida para el Caballero.
+- Los cofres dan 10 monedas. Al vencer al jefe del último bioma disponible (hoy, La Llave) la run termina con victoria.
 - ⚠️ "Intercambio de personaje tras la primera run" es meta-progresión → se movió al **Backlog v1.1**. En v1 se elige personaje al inicio de cada run.
 
 ## 10. Arte y audio

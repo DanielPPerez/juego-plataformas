@@ -1,1 +1,11 @@
-[]
+[
+  { "id": "vitality", "name": "Vitalidad", "desc": "+1 corazón máximo y te cura 1", "stackable": true },
+  { "id": "edge", "name": "Filo", "desc": "+20 % de daño", "stackable": true },
+  { "id": "bloody_dash", "name": "Dash sangriento", "desc": "El dash daña a los enemigos", "stackable": false },
+  { "id": "magnet", "name": "Imán", "desc": "Atrae las monedas cercanas", "stackable": false },
+  { "id": "double_attack", "name": "Doble ataque", "desc": "Cada ataque golpea dos veces", "stackable": false },
+  { "id": "shield", "name": "Escudo", "desc": "Bloquea 1 golpe por nivel", "stackable": true },
+  { "id": "evasion", "name": "Evasión", "desc": "15 % de esquivar un golpe", "stackable": true },
+  { "id": "luck", "name": "Suerte", "desc": "Monedas ×2", "stackable": false },
+  { "id": "cursed_blood", "name": "Sangre maldita", "desc": "+50 % de daño con 1 corazón", "stackable": false }
+]

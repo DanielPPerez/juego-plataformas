@@ -28,7 +28,7 @@ export class UIScene extends Phaser.Scene {
     const style = { fontFamily: FONT, fontSize: '16px', color: '#ffffff' };
     this.status = this.add.text(12, 44, '', style);
     this.debug = this.add.text(12, 68, '', { ...style, color: '#9a9aaa' });
-    this.add.text(12, VIEW_H * ZOOM - 28, 'Clic ataque  F1 ajustes  Shift dash  S/Abajo bajar  R nueva run', {
+    this.add.text(12, VIEW_H * ZOOM - 28, 'Clic ataque  Shift dash  S/Abajo bajar  Esc pausa  F1 ajustes', {
       ...style,
       color: '#6a6a7a',
     });

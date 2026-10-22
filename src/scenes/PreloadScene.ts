@@ -1,21 +1,54 @@
 import Phaser from 'phaser';
 import { FONT } from '../config';
+import sheets from '../data/assets.json';
+import { isDebugUrl } from '../systems/Run';
 
-// Carga todos los assets del juego; mientras no haya arte, genera placeholders
+type Sheet = { frameWidth: number; frameHeight: number; anims: Record<string, number[]> };
+
+// Todo PNG en src/assets/ se carga con su nombre de archivo como clave (knight.png → 'knight').
+// Si está en assets.json es una hoja de sprites con animaciones; si no, una imagen.
+const files = import.meta.glob('../assets/**/*.png', { eager: true, query: '?url', import: 'default' }) as Record<
+  string,
+  string
+>;
+
+// Carga el arte disponible y genera placeholders para lo que falte
 export class PreloadScene extends Phaser.Scene {
   constructor() {
     super('Preload');
   }
 
+  preload() {
+    for (const [path, url] of Object.entries(files)) {
+      const key = path.split('/').pop()!.replace('.png', '');
+      const sheet = (sheets as Record<string, Sheet>)[key];
+      if (sheet) this.load.spritesheet(key, url, sheet);
+      else this.load.image(key, url);
+    }
+  }
+
   create() {
     this.makePlaceholders();
+    for (const [key, sheet] of Object.entries(sheets as Record<string, Sheet>)) {
+      // Solo si se cargó la hoja real (un placeholder tiene un único frame)
+      if (this.textures.get(key).frameTotal <= 1) continue;
+      for (const [name, [start, end, frameRate]] of Object.entries(sheet.anims)) {
+        this.anims.create({
+          key: `${key}-${name}`,
+          frames: this.anims.generateFrameNumbers(key, { start, end }),
+          frameRate,
+          repeat: name === 'idle' || name === 'run' || name === 'walk' ? -1 : 0,
+        });
+      }
+    }
     // Esperar la fuente: si el texto se crea antes, Phaser lo dibuja con la fuente por defecto
-    document.fonts.load(`16px ${FONT}`).finally(() => this.scene.start('Game'));
+    document.fonts.load(`16px ${FONT}`).finally(() => this.scene.start(isDebugUrl() ? 'Game' : 'Menu'));
   }
 
   private makePlaceholders() {
     const g = this.add.graphics();
     const make = (key: string, w: number, h: number, draw: () => void) => {
+      if (this.textures.exists(key)) return;
       g.clear();
       draw();
       g.generateTexture(key, w, h);

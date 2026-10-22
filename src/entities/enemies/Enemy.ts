@@ -7,7 +7,8 @@ const STUN_MS = 200;
 
 // Enemigo terrestre que patrulla (gravedad y límites los pone el grupo de GameScene).
 // El comportamiento sale de los datos (enemies.json):
-// sight > 0 → persigue al jugador si lo ve; turnAtLedges → se gira en los bordes; jumpGaps → salta los huecos.
+// sight > 0 → persigue al jugador si lo ve; si no salta, se gira en los bordes;
+// jumps → salta huecos y muros (en el aire va a airSpeed).
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
   declare body: Phaser.Physics.Arcade.Body;
 
@@ -26,6 +27,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.hp = stats.hp;
     scene.add.existing(this);
     scene.physics.add.existing(this);
+    if (scene.anims.exists(`${stats.texture}-walk`)) this.play(`${stats.texture}-walk`);
   }
 
   update(dtMs: number, target: Phaser.GameObjects.Components.Transform) {
@@ -39,13 +41,19 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const sees = s.sight > 0 && Math.abs(dx) < s.sight && Math.abs(target.y - this.y) < 32;
     if (sees) this.dir = dx > 0 ? 1 : -1;
 
-    if ((this.dir < 0 && b.blocked.left) || (this.dir > 0 && b.blocked.right)) this.dir *= -1;
+    const onFloor = b.blocked.down;
+    const wallAhead = (this.dir < 0 && b.blocked.left) || (this.dir > 0 && b.blocked.right);
+    const ledgeAhead = onFloor && !this.groundAt(this.x + this.dir * (b.halfWidth + 2), b.bottom + 2);
+    let speed = !onFloor ? s.airSpeed : sees ? s.chaseSpeed : s.speed;
 
-    let speed = sees ? s.chaseSpeed : s.speed;
-    const ledgeAhead = b.blocked.down && !this.groundAt(this.x + this.dir * (b.halfWidth + 2), b.bottom + 2);
-    if (ledgeAhead) {
-      if (s.jumpGaps) b.setVelocityY(-s.jumpVelocity);
-      else if (sees) speed = 0;
+    // Muro o hueco delante: saltarlo (si sabe) o darse la vuelta / esperar en el borde
+    if ((wallAhead || ledgeAhead) && onFloor && s.jumps) {
+      b.setVelocityY(-s.jumpVelocity);
+      speed = s.airSpeed;
+    } else if (wallAhead && !sees) {
+      this.dir *= -1;
+    } else if (ledgeAhead) {
+      if (sees) speed = 0;
       else this.dir *= -1;
     }
 

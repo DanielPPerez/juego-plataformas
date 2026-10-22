@@ -8,8 +8,11 @@ const SWING_MS = 120;
 
 // Caballero: ataque melee hacia donde mira
 export class Knight extends Player {
+  // Mejora "Doble ataque": un segundo golpe automático tras el primero
+  doubleAttack = false;
   private attackTimer = 0;
   private swingTimer = 0;
+  private secondSwingTimer = 0;
   private swingHits = new Set<object>();
 
   constructor(scene: Phaser.Scene, x: number, y: number, input: Input, cfg: PlayerConfig) {
@@ -32,11 +35,21 @@ export class Knight extends Player {
   updateAttack(dtMs: number) {
     this.attackTimer -= dtMs;
     this.swingTimer -= dtMs;
+    if (this.secondSwingTimer > 0 && (this.secondSwingTimer -= dtMs) <= 0) this.swing();
     if (this.controls.attackPressed && this.attackTimer <= 0) {
       this.attackTimer = this.cfg.attackCooldownMs;
-      this.swingTimer = SWING_MS;
-      this.swingHits.clear();
+      this.swing();
+      if (this.doubleAttack) this.secondSwingTimer = SWING_MS + 60;
     }
+  }
+
+  protected override animState(): string {
+    return this.swingTimer > 0 && !this.isDashing ? 'attack' : super.animState();
+  }
+
+  private swing() {
+    this.swingTimer = SWING_MS;
+    this.swingHits.clear();
   }
 
   // Cada objetivo recibe como mucho un impacto por golpe

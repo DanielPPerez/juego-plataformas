@@ -3,3 +3,5 @@ export const VIEW_W = 480;
 export const VIEW_H = 270;
 export const ZOOM = 3;
 export const FONT = '"Press Start 2P"';
+// Título provisional (el GDD aún no tiene nombre)
+export const TITLE = 'La Entidad Dividida';

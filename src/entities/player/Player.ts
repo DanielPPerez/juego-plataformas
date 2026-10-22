@@ -25,7 +25,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private hurtTimer = 0;
 
   // El sprite físico es invisible; el visual se deforma (squash) sin tocar la hitbox
-  protected visual: Phaser.GameObjects.Image;
+  protected visual: Phaser.GameObjects.Sprite;
 
   constructor(
     scene: Phaser.Scene,
@@ -44,10 +44,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.body.setAllowGravity(false);
 
     this.setVisible(false);
-    this.visual = scene.add.image(x, y, texture).setOrigin(0.5, 1);
+    this.visual = scene.add.sprite(x, y, texture).setOrigin(0.5, 1);
     // POST_UPDATE corre después de que la física mueva el sprite
     const sync = () => {
       this.visual.setPosition(this.x, this.y + this.displayHeight / 2).setFlipX(this.flipX);
+      // Animación por estado, solo si existe (hoja de sprites cargada; ver assets.json)
+      const anim = `${texture}-${this.animState()}`;
+      if (scene.anims.exists(anim)) this.visual.play(anim, true);
     };
     scene.events.on(Phaser.Scenes.Events.POST_UPDATE, sync);
     this.once(Phaser.GameObjects.Events.DESTROY, () => {
@@ -63,6 +66,13 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   // i-frames: durante el dash y tras recibir daño
   get invulnerable(): boolean {
     return this.isDashing || this.hurtTimer > 0;
+  }
+
+  protected animState(): string {
+    if (this.isDashing) return 'dash';
+    if (this.hurtTimer > this.cfg.invulnMs - KNOCKBACK_MS) return 'hurt';
+    if (!this.onFloor) return this.body.velocity.y < 0 ? 'jump' : 'fall';
+    return Math.abs(this.body.velocity.x) > 10 ? 'run' : 'idle';
   }
 
   // Devuelve true si el golpe hizo daño. fromX: de dónde viene el golpe (para el knockback).

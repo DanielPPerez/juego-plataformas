@@ -4,6 +4,11 @@ import { BootScene } from './scenes/BootScene';
 import { PreloadScene } from './scenes/PreloadScene';
 import { GameScene } from './scenes/GameScene';
 import { UIScene } from './scenes/UIScene';
+import { MenuScene } from './scenes/MenuScene';
+import { CharacterSelectScene } from './scenes/CharacterSelectScene';
+import { UpgradeScene } from './scenes/UpgradeScene';
+import { PauseScene } from './scenes/PauseScene';
+import { GameOverScene } from './scenes/GameOverScene';
 
 const config: Phaser.Types.Core.GameConfig = {
   type: Phaser.AUTO,
@@ -20,7 +25,7 @@ const config: Phaser.Types.Core.GameConfig = {
     default: 'arcade',
     arcade: { gravity: { x: 0, y: 0 }, debug: true },
   },
-  scene: [BootScene, PreloadScene, GameScene, UIScene],
+  scene: [BootScene, PreloadScene, MenuScene, CharacterSelectScene, GameScene, UIScene, UpgradeScene, PauseScene, GameOverScene],
 };
 
 new Phaser.Game(config);

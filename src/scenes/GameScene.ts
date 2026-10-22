@@ -13,6 +13,8 @@ import { CHUNK_H, CHUNK_PX, CHUNK_W, TILE_SIZE } from '../systems/level';
 import { abilityFromConfig } from '../systems/LevelValidator';
 import { loadPlayerConfig } from '../systems/PlayerConfig';
 import { RNG } from '../systems/RNG';
+import { getRun, isDevMode, stacks, urlParam, type RunState } from '../systems/Run';
+import { damageMultiplier, rollUpgrades } from '../systems/Upgrades';
 import { TuningPanel } from '../utils/TuningPanel';
 import type { Hud } from './UIScene';
 
@@ -20,21 +22,16 @@ const BIOME = 1;
 const BIOME_ENEMIES = Object.values(enemyStats).filter((e) => e.biome === BIOME);
 const HITSTOP_MS = 50;
 const ENEMY_GRAVITY = 1000;
+const CHEST_COINS = 10;
+const MAGNET_RADIUS = 56;
+const EVASION_CHANCE = 0.15;
 // Persecución: chunks de sobra (el jefe muere mucho antes) y suelo de los chunks de persecución
 const CHASE_CHUNKS = 200;
 const CHASE_GROUND_Y = 15 * TILE_SIZE;
 
 interface GameSceneData {
-  runSeed?: string;
-  levelIndex?: number;
-  coins?: number;
-  hp?: number;
   // Persecución del jefe del bioma (tras el 2.º nivel)
   boss?: boolean;
-}
-
-function randomSeed(): string {
-  return Math.random().toString(36).slice(2, 8);
 }
 
 // Centro horizontal de la celda; en vertical, a la altura en que el sprite de 32 px apoya en el suelo
@@ -43,6 +40,7 @@ function tileToWorld(x: number, y: number, offsetX = 0) {
 }
 
 export class GameScene extends Phaser.Scene {
+  private run!: RunState;
   private player!: Knight;
   private controls!: Input;
   private panel!: TuningPanel;
@@ -50,16 +48,16 @@ export class GameScene extends Phaser.Scene {
   private streamer!: ChunkStreamer;
   private coinGroup!: Phaser.Physics.Arcade.StaticGroup;
   private enemies!: Phaser.Physics.Arcade.Group;
-  private runSeed = '';
-  private levelIndex = 1;
-  private coins = 0;
-  private startHp?: number;
+  private combatRng!: RNG;
   private hitstopUntil = 0;
   private dead = false;
+  private invincible = false;
+  private midUpgradeDone = false;
   private chase = false;
   private boss?: KeyBoss;
   private cameraTarget?: Phaser.GameObjects.Zone;
   private slash!: Phaser.GameObjects.Rectangle;
+  private dashHits = new Set<Enemy>();
   private solidLayer!: Phaser.Tilemaps.TilemapLayer;
   private platformLayer!: Phaser.Tilemaps.TilemapLayer;
 
@@ -68,12 +66,10 @@ export class GameScene extends Phaser.Scene {
   }
 
   init(data: GameSceneData) {
-    // La seed de la run viene de la URL (?seed=abc) para poder compartir y depurar runs
-    this.runSeed = data.runSeed ?? new URLSearchParams(location.search).get('seed') ?? randomSeed();
-    this.levelIndex = data.levelIndex ?? 1;
-    this.coins = data.coins ?? 0;
-    this.startHp = data.hp;
+    this.run = getRun(this);
     this.dead = false;
+    this.midUpgradeDone = false;
+    this.pendingUpgrade = undefined;
     // ?boss en la URL va directo a la persecución (depuración)
     this.chase = data.boss ?? new URLSearchParams(location.search).has('boss');
     this.boss = undefined;
@@ -81,11 +77,15 @@ export class GameScene extends Phaser.Scene {
   }
 
   create() {
+    const run = this.run;
+    const levelSeed = `${run.seed}:${run.levelIndex}`;
     // Validar con la config por defecto (no la del panel F1) para que una seed siempre dé el mismo nivel
     const ability = abilityFromConfig(playerDefaults);
     this.plan = this.chase
-      ? planLevel(`${this.runSeed}:${this.levelIndex}:chase`, 1, getChunks('chase1'), CHASE_CHUNKS)
-      : planLevel(`${this.runSeed}:${this.levelIndex}`, this.levelIndex, getChunks('bioma1'));
+      ? planLevel(`${levelSeed}:chase`, 1, getChunks('chase1'), CHASE_CHUNKS)
+      : planLevel(levelSeed, run.levelIndex, getChunks('bioma1'));
+    this.combatRng = new RNG(`${levelSeed}:combat`);
+    run.shield = stacks(run, 'shield');
 
     const map = this.make.tilemap({
       width: this.plan.chunks.length * CHUNK_W,
@@ -103,7 +103,8 @@ export class GameScene extends Phaser.Scene {
     this.controls = new Input(this);
     const cfg = loadPlayerConfig();
     this.player = new Knight(this, 0, 0, this.controls, cfg);
-    if (this.startHp !== undefined) this.player.hp = this.startHp;
+    this.player.hp = run.hp;
+    this.player.doubleAttack = stacks(run, 'double_attack') > 0;
     this.player.body.setCollideWorldBounds(true);
     this.physics.world.setBoundsCollision(true, true, true, false);
 
@@ -111,7 +112,7 @@ export class GameScene extends Phaser.Scene {
       this.spawnChunkObjects(chunk, ox),
     );
     // ?chunk=N empieza en ese chunk (depuración de diseños)
-    const debugChunk = Number(new URLSearchParams(location.search).get('chunk') ?? 0);
+    const debugChunk = Number(urlParam('chunk') ?? 0);
     this.streamer.update(debugChunk * CHUNK_PX);
     const first = this.streamer.chunkAt(debugChunk * CHUNK_PX)!;
     const startPos = tileToWorld(first.start?.x ?? 1, first.start?.y ?? first.entryRow, first.index * CHUNK_PX);
@@ -122,10 +123,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.platformLayer, undefined, () => !this.player.isDropping);
     this.physics.add.collider(this.enemies, this.solidLayer);
     this.physics.add.collider(this.enemies, this.platformLayer);
-    this.physics.add.overlap(this.player, this.coinGroup, (_p, coin) => {
-      (coin as Phaser.Physics.Arcade.Image).destroy();
-      this.coins++;
-    });
+    this.physics.add.overlap(this.player, this.coinGroup, (_p, coin) => this.collect(coin as Phaser.Physics.Arcade.Image));
     this.physics.add.overlap(this.player, this.enemies, (_p, e) => {
       const enemy = e as Enemy;
       this.damagePlayer(enemy.stats.damage, enemy.x);
@@ -140,8 +138,16 @@ export class GameScene extends Phaser.Scene {
     this.panel = new TuningPanel(cfg);
     const kb = this.input.keyboard!;
     kb.addKey(Phaser.Input.Keyboard.KeyCodes.F1).on('down', () => this.panel.toggle());
-    kb.addKey(Phaser.Input.Keyboard.KeyCodes.R).on('down', () => this.scene.restart({ runSeed: randomSeed() }));
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.panel.destroy());
+    kb.on('keydown-ESC', () => this.openOverlay('Pause'));
+    if (isDevMode()) {
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.F2).on('down', () => (this.boss ? this.boss.hurt(999) : this.finishLevel()));
+      kb.addKey(Phaser.Input.Keyboard.KeyCodes.F3).on('down', () => (this.invincible = !this.invincible));
+    }
+    this.events.on('upgrade-picked', this.onUpgradePicked, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.panel.destroy();
+      this.events.off('upgrade-picked', this.onUpgradePicked, this);
+    });
   }
 
   update(time: number, delta: number) {
@@ -159,6 +165,7 @@ export class GameScene extends Phaser.Scene {
     this.player.update(dt);
     this.player.updateAttack(dt);
     this.handleAttack();
+    this.handleUpgradeEffects();
 
     const fallLimit = CHUNK_H * TILE_SIZE + 32;
     for (const e of this.enemies.getChildren() as Enemy[]) {
@@ -179,33 +186,33 @@ export class GameScene extends Phaser.Scene {
       this.damagePlayer(1, undefined, true);
     }
 
+    // Mejora a mitad de nivel
+    if (!this.chase && !this.midUpgradeDone && chunk && chunk.index >= this.streamer.chunkCount / 2) {
+      this.midUpgradeDone = true;
+      this.offerUpgrade('Mitad del nivel', 'mid');
+    }
+
+    this.run.hp = this.player.hp;
     const hud: Hud = {
       hp: this.player.hp,
-      maxHp: playerDefaults.maxHp,
-      status: `Seed ${this.runSeed}  Nivel ${this.levelIndex}  Monedas ${this.coins}`,
-      debug: `Chunk ${chunk?.index ?? '-'}/${this.streamer.chunkCount - 1} ${chunk?.name ?? ''}`,
+      maxHp: this.run.maxHp,
+      status: `Nivel ${this.run.levelIndex}  Monedas ${this.run.coins}${this.run.shield ? '  Escudo ' + this.run.shield : ''}`,
+      debug: `Seed ${this.run.seed}  Chunk ${chunk?.index ?? '-'}/${this.streamer.chunkCount - 1} ${chunk?.name ?? ''}${this.invincible ? '  INVENCIBLE' : ''}`,
       boss: this.boss && { name: this.boss.stats.name, hp: this.boss.hp, maxHp: this.boss.maxHp },
     };
     this.registry.set('hud', hud);
   }
 
   private startChase() {
-    const view = VIEW_W / 2;
-    this.cameraTarget = this.add.zone(view, (CHUNK_H * TILE_SIZE) / 2, 1, 1);
+    this.cameraTarget = this.add.zone(VIEW_W / 2, (CHUNK_H * TILE_SIZE) / 2, 1, 1);
     this.cameras.main.startFollow(this.cameraTarget, true, 1, 1);
     this.boss = new KeyBoss(this, this.plan.seed, {
       camera: this.cameras.main,
       groundY: CHASE_GROUND_Y,
       playerX: () => this.player.x,
       spawnLarva: (x, y) => this.enemies.add(new Enemy(this, x, y, enemyStats.larva, this.groundAt)),
-      onDefeated: () =>
-        this.scene.restart({
-          runSeed: this.runSeed,
-          levelIndex: this.levelIndex + 1,
-          coins: this.coins,
-          hp: this.player.hp,
-          boss: false,
-        }),
+      // Solo existe el bioma 1: vencer a La Llave termina la demo
+      onDefeated: () => this.endRun(true),
     });
   }
 
@@ -228,6 +235,10 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  private get attackDamage(): number {
+    return this.player.attackDamage * damageMultiplier(this.run, this.player.hp);
+  }
+
   // El golpe está activo varios frames y sigue al jugador; cada objetivo recibe un impacto por golpe
   private handleAttack() {
     const hitbox = this.player.attackHitbox;
@@ -238,13 +249,13 @@ export class GameScene extends Phaser.Scene {
     let hit = false;
     for (const e of this.enemies.getChildren() as Enemy[]) {
       if (Phaser.Geom.Intersects.RectangleToRectangle(hitbox, e.getBounds()) && this.player.canHit(e)) {
-        e.hurt(this.player.attackDamage, this.player.x);
+        e.hurt(this.attackDamage, this.player.x);
         hit = true;
       }
     }
     const boss = this.boss;
     if (boss && !boss.dead && Phaser.Geom.Intersects.RectangleToRectangle(hitbox, boss.hurtbox) && this.player.canHit(boss)) {
-      boss.hurt(this.player.attackDamage);
+      boss.hurt(this.attackDamage);
       hit = true;
     }
     if (hit) {
@@ -253,12 +264,48 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
+  // Dash sangriento e Imán
+  private handleUpgradeEffects() {
+    if (stacks(this.run, 'bloody_dash') > 0) {
+      if (!this.player.isDashing) this.dashHits.clear();
+      else {
+        for (const e of this.enemies.getChildren() as Enemy[]) {
+          if (!this.dashHits.has(e) && Phaser.Geom.Intersects.RectangleToRectangle(this.player.getBounds(), e.getBounds())) {
+            this.dashHits.add(e);
+            e.hurt(this.attackDamage, this.player.x);
+          }
+        }
+      }
+    }
+    if (stacks(this.run, 'magnet') > 0) {
+      for (const c of this.coinGroup.getChildren() as Phaser.Physics.Arcade.Image[]) {
+        if (Phaser.Math.Distance.Between(c.x, c.y, this.player.x, this.player.y) < MAGNET_RADIUS) this.collect(c);
+      }
+    }
+  }
+
+  private collect(coin: Phaser.Physics.Arcade.Image) {
+    const value = (coin.getData('value') as number | undefined) ?? 1;
+    this.run.coins += value * (stacks(this.run, 'luck') > 0 ? 2 : 1);
+    coin.destroy();
+  }
+
   private damagePlayer(damage: number, fromX?: number, force = false) {
+    if (this.invincible || (this.player.invulnerable && !force)) return;
+    // Escudo y Evasión no protegen de caer a un hueco
+    if (!force && this.run.shield > 0) {
+      this.run.shield--;
+      this.player.hurt(0, fromX);
+      this.cameras.main.flash(100, 80, 140, 255);
+      return;
+    }
+    if (!force && this.combatRng.float() < EVASION_CHANCE * stacks(this.run, 'evasion')) return;
+
     if (!this.player.hurt(damage, fromX, force)) return;
     this.hitstop();
     this.cameras.main.shake(150, 0.01);
     this.cameras.main.flash(100, 255, 60, 60);
-    if (this.player.hp <= 0) this.die();
+    if (this.player.hp <= 0) this.endRun(false);
   }
 
   private hitstop() {
@@ -266,14 +313,43 @@ export class GameScene extends Phaser.Scene {
     this.physics.world.pause();
   }
 
-  // Muerte: por ahora se reinicia la run con otra seed (la pantalla de Game Over llega en la fase 5)
-  private die() {
+  private endRun(victory: boolean) {
     this.dead = true;
+    this.run.hp = this.player.hp;
     this.physics.world.pause();
     this.cameras.main.fadeOut(600, 0, 0, 0);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () =>
-      this.scene.restart({ runSeed: randomSeed() }),
-    );
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.stop('UI');
+      this.scene.start('GameOver', { victory });
+    });
+  }
+
+  private openOverlay(key: string, data?: object) {
+    if (this.dead || !this.scene.isActive()) return;
+    this.scene.pause();
+    this.scene.launch(key, data);
+  }
+
+  // phase: 'mid' (mitad del nivel) o 'end' (al llegar a la salida)
+  private pendingUpgrade?: 'mid' | 'end';
+
+  private offerUpgrade(title: string, phase: 'mid' | 'end') {
+    this.pendingUpgrade = phase;
+    const choices = rollUpgrades(this.run, `${this.plan.seed}:${phase}:upgrades`);
+    this.openOverlay('Upgrade', { title, choices });
+  }
+
+  private onUpgradePicked() {
+    this.scene.resume();
+    // Aplicar mejoras que afectan al jugador ya creado
+    this.player.hp = this.run.hp;
+    this.player.doubleAttack = stacks(this.run, 'double_attack') > 0;
+    if (this.pendingUpgrade === 'end') this.nextLevel();
+  }
+
+  private finishLevel() {
+    if (this.pendingUpgrade === 'end') return;
+    this.offerUpgrade('¡Nivel completado!', 'end');
   }
 
   private updateBounds() {
@@ -293,14 +369,14 @@ export class GameScene extends Phaser.Scene {
     if (chunk.exit && !this.chase) {
       const p = tileToWorld(chunk.exit.x, chunk.exit.y, offsetX);
       const exit = this.physics.add.staticImage(p.x, p.y, 'exit');
-      this.physics.add.overlap(this.player, exit, () => this.nextLevel());
+      this.physics.add.overlap(this.player, exit, () => this.finishLevel());
       objects.push(exit);
     }
     for (const s of chunk.spawns) {
       const x = offsetX + s.x * TILE_SIZE + TILE_SIZE / 2;
       const y = s.y * TILE_SIZE + TILE_SIZE / 2;
       if (s.type === 'coin') objects.push(this.coinGroup.create(x, y, 'coin'));
-      else if (s.type === 'chest') objects.push(this.add.image(x, y + 3, 'chest'));
+      else if (s.type === 'chest') objects.push(this.coinGroup.create(x, y + 3, 'chest').setData('value', CHEST_COINS));
       else if (s.type === 'enemy') {
         const stats = rng.pick(BIOME_ENEMIES);
         for (let i = 0; i < stats.count; i++) {
@@ -315,13 +391,8 @@ export class GameScene extends Phaser.Scene {
 
   // Cada bioma = 2 niveles + persecución del jefe
   private nextLevel() {
-    const toBoss = this.levelIndex % 2 === 0;
-    this.scene.restart({
-      runSeed: this.runSeed,
-      levelIndex: toBoss ? this.levelIndex : this.levelIndex + 1,
-      coins: this.coins,
-      hp: this.player.hp,
-      boss: toBoss,
-    });
+    const toBoss = this.run.levelIndex % 2 === 0;
+    if (!toBoss) this.run.levelIndex++;
+    this.scene.restart({ boss: toBoss });
   }
 }

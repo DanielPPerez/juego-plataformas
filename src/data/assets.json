@@ -1,0 +1,18 @@
+{
+  "knight": {
+    "frameWidth": 24,
+    "frameHeight": 32,
+    "anims": {
+      "idle": [0, 3, 6],
+      "run": [4, 11, 12],
+      "jump": [12, 12, 1],
+      "fall": [13, 13, 1],
+      "attack": [14, 17, 20],
+      "dash": [18, 18, 1],
+      "hurt": [19, 19, 1]
+    }
+  },
+  "cultist": { "frameWidth": 16, "frameHeight": 24, "anims": { "walk": [0, 3, 8] } },
+  "rat": { "frameWidth": 14, "frameHeight": 8, "anims": { "walk": [0, 3, 12] } },
+  "larva": { "frameWidth": 10, "frameHeight": 6, "anims": { "walk": [0, 3, 8] } }
+}
