@@ -44,8 +44,25 @@ export class PreloadScene extends Phaser.Scene {
       g.fillStyle(0x7a4a20).fillRect(0, 0, 14, 10);
       g.fillStyle(0xffd040).fillRect(6, 3, 2, 3);
     });
-    // Marcador de enemigo (se sustituye por enemigos reales en la fase 3)
-    make('enemy-marker', 16, 16, () => g.lineStyle(1, 0xff4040, 0.7).strokeRect(0, 0, 16, 16));
+    // Cultista 16×24: túnica granate con capucha y ojos
+    make('cultist', 16, 24, () => {
+      g.fillStyle(0x6a1a2a).fillRect(2, 4, 12, 20);
+      g.fillStyle(0x4a0e1a).fillRect(4, 0, 8, 8);
+      g.fillStyle(0xffd040).fillRect(9, 4, 2, 1);
+    });
+    // Rata 14×8
+    make('rat', 14, 8, () => {
+      g.fillStyle(0x7a7a80).fillRect(2, 2, 10, 6);
+      g.fillStyle(0x5a5a60).fillRect(0, 5, 3, 1);
+      g.fillStyle(0xff4040).fillRect(10, 3, 1, 1);
+    });
+    // Corazones de la UI (7×6)
+    const heart = (color: number) => () => {
+      g.fillStyle(color).fillRect(1, 0, 2, 1).fillRect(4, 0, 2, 1).fillRect(0, 1, 7, 2).fillRect(1, 3, 5, 1);
+      g.fillRect(2, 4, 3, 1).fillRect(3, 5, 1, 1);
+    };
+    make('heart', 7, 6, heart(0xe03040));
+    make('heart-empty', 7, 6, heart(0x3a2a40));
 
     g.destroy();
   }

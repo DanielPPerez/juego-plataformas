@@ -17,5 +17,11 @@
   "dropThroughMs": 200,
   "dashSpeed": 500,
   "dashDurationMs": 230,
-  "dashCooldownMs": 450
+  "dashCooldownMs": 450,
+  "maxHp": 5,
+  "invulnMs": 1000,
+  "knockback": 180,
+  "attackDamage": 1,
+  "attackCooldownMs": 300,
+  "attackRange": 22
 }

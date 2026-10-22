@@ -121,7 +121,7 @@ Criaturas de los relatos originales de Lovecraft, adaptadas a lo medieval.
 | **Mi-Go**                             | 3     | Vuela y dispara en línea                                        | Descarnado        | *The Whisperer in Darkness*         |
 | **Shoggoth menor**                    | 3     | Masa lenta que se divide en 2 al recibir daño; bloquea pasillos | Patrulla          | *At the Mountains of Madness*       |
 
-> Solo hay 3 comportamientos base (**patrulla, volador, tirador**); los 6 enemigos son variaciones con datos en `enemies.json`.
+> Solo hay 3 comportamientos base (**patrulla, volador, tirador**); los 6 enemigos son variaciones con datos en `enemies.json`. Hoy existe solo `Enemy` (patrulla) con flags de datos (`sight`, `turnAtLedges`, `jumpGaps`); volador y tirador se añaden cuando lleguen sus enemigos (bioma 2–3).
 
 ## 9. Mejoras
 
@@ -189,7 +189,7 @@ src/
   scenes/                # Boot, Preload, Menu, CharacterSelect, Game, BossChase, UI (HUD), GameOver
   entities/
     player/              # Player (base), Knight, Mage
-    enemies/             # Enemy (base), behaviors/ (Patrol, Flyer, Shooter)
+    enemies/             # Enemy (terrestre, configurado por datos); Flyer y Shooter llegarán con los biomas 2–3
     bosses/              # Boss (base + state machine), KeyBoss, GateBoss, GuardianBoss
   systems/
     ChunkGenerator.ts    # secuencia de chunks + contenido on-the-fly (sin Phaser, testeable)

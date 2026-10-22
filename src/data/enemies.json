@@ -1,1 +1,28 @@
-[]
+{
+  "cultist": {
+    "biome": 1,
+    "texture": "cultist",
+    "count": 1,
+    "hp": 3,
+    "damage": 1,
+    "speed": 35,
+    "chaseSpeed": 75,
+    "sight": 140,
+    "turnAtLedges": true,
+    "jumpGaps": false,
+    "jumpVelocity": 0
+  },
+  "rat": {
+    "biome": 1,
+    "texture": "rat",
+    "count": 3,
+    "hp": 1,
+    "damage": 1,
+    "speed": 110,
+    "chaseSpeed": 110,
+    "sight": 0,
+    "turnAtLedges": false,
+    "jumpGaps": true,
+    "jumpVelocity": 260
+  }
+}

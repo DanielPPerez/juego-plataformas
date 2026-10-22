@@ -2,12 +2,14 @@ import Phaser from 'phaser';
 import type { Input } from '../../systems/Input';
 import type { PlayerConfig } from '../../systems/PlayerConfig';
 
+const KNOCKBACK_MS = 150;
+
 // Movimiento compartido por todos los personajes; las subclases añaden ataque y habilidad
 export class Player extends Phaser.Physics.Arcade.Sprite {
   declare body: Phaser.Physics.Arcade.Body;
 
   facing: 1 | -1 = 1;
-  invulnerable = false;
+  hp: number;
   // La escena lo actualiza cada frame: ¿los pies están sobre una plataforma atravesable?
   standingOnOneWay = false;
 
@@ -20,6 +22,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private jumpCutAvailable = false;
   private airJumpsLeft = 0;
   private dropTimer = 0;
+  private hurtTimer = 0;
 
   // El sprite físico es invisible; el visual se deforma (squash) sin tocar la hitbox
   protected visual: Phaser.GameObjects.Image;
@@ -33,6 +36,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     protected cfg: PlayerConfig,
   ) {
     super(scene, x, y, texture);
+    this.hp = cfg.maxHp;
     scene.add.existing(this);
     scene.physics.add.existing(this);
     this.body.setSize(16, 28).setOffset(4, 4);
@@ -56,6 +60,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.dashTimer > 0;
   }
 
+  // i-frames: durante el dash y tras recibir daño
+  get invulnerable(): boolean {
+    return this.isDashing || this.hurtTimer > 0;
+  }
+
+  // Devuelve true si el golpe hizo daño. fromX: de dónde viene el golpe (para el knockback).
+  // force: daña aunque haya i-frames (caer a un hueco).
+  hurt(damage: number, fromX?: number, force = false): boolean {
+    if (this.invulnerable && !force) return false;
+    this.hp = Math.max(0, this.hp - damage);
+    this.hurtTimer = this.cfg.invulnMs;
+    this.dashTimer = 0;
+    if (fromX !== undefined) {
+      this.body.setVelocity(Math.sign(this.x - fromX || 1) * this.cfg.knockback, -this.cfg.knockback * 0.8);
+    }
+    return true;
+  }
+
   // Mientras es true, la escena ignora la colisión con plataformas atravesables
   get isDropping(): boolean {
     return this.dropTimer > 0;
@@ -76,6 +98,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.jumpBufferTimer -= dtMs;
     this.dashCooldownTimer -= dtMs;
     this.dropTimer -= dtMs;
+    this.hurtTimer -= dtMs;
+    // Parpadeo durante los i-frames
+    this.visual.setAlpha(this.hurtTimer > 0 && Math.floor(this.hurtTimer / 80) % 2 === 0 ? 0.3 : 1);
     if (this.controls.jumpPressed) this.jumpBufferTimer = cfg.jumpBufferMs;
     if (this.onFloor) {
       this.canAirDash = true;
@@ -90,27 +115,24 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       this.dashTimer = cfg.dashDurationMs;
       this.dashCooldownTimer = cfg.dashCooldownMs;
       if (!this.onFloor) this.canAirDash = false;
-      this.invulnerable = true;
       this.squash(1.3, 0.75);
     }
     if (this.isDashing) {
       this.dashTimer -= dtMs;
       body.setVelocity(this.facing * cfg.dashSpeed, 0);
-      if (this.dashTimer <= 0) {
-        this.invulnerable = false;
-        body.setVelocityX(this.facing * cfg.maxRunSpeed);
-      }
+      if (this.dashTimer <= 0) body.setVelocityX(this.facing * cfg.maxRunSpeed);
       this.setFlipX(this.facing < 0);
       return;
     }
 
-    // Horizontal: acelerar hacia la velocidad objetivo
+    // Horizontal: acelerar hacia la velocidad objetivo (sin control durante el knockback)
+    const knockedBack = this.hurtTimer > cfg.invulnMs - KNOCKBACK_MS;
     const target = axis * cfg.maxRunSpeed;
     const accelerating = axis !== 0;
     const rate = this.onFloor
       ? (accelerating ? cfg.groundAccel : cfg.groundDecel)
       : (accelerating ? cfg.airAccel : cfg.airDecel);
-    body.setVelocityX(approach(body.velocity.x, target, rate * dt));
+    if (!knockedBack) body.setVelocityX(approach(body.velocity.x, target, rate * dt));
 
     // Abajo sobre plataforma atravesable: bajar
     if (this.controls.downHeld && this.onFloor && this.standingOnOneWay && !this.isDropping) {

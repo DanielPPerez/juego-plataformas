@@ -23,6 +23,12 @@ const RANGES: Record<keyof PlayerConfig, Range> = {
   dashSpeed: [150, 800, 10],
   dashDurationMs: [50, 400, 10],
   dashCooldownMs: [0, 1500, 50],
+  maxHp: [1, 10, 1],
+  invulnMs: [200, 2000, 50],
+  knockback: [0, 400, 10],
+  attackDamage: [1, 5, 1],
+  attackCooldownMs: [100, 1000, 10],
+  attackRange: [8, 48, 2],
 };
 
 // Panel HTML de ajuste en vivo (F1). Herramienta de desarrollo, no forma parte del juego.
