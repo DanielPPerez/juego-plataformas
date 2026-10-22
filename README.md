@@ -9,7 +9,7 @@ Phaser 3 + TypeScript + Vite. Diseño en [docs/mini-gdd-plataformas-procedural.m
 - `npm test`: tests del generador (cada chunk se puede cruzar + 1000 niveles completables)
 - `npm run chunks`: convierte los chunks ASCII de `scripts/chunks/` a JSON de Tiled (`-- --force` para sobrescribir)
 
-Abre el juego con `?seed=abc` para repetir una run concreta.
+Abre el juego con `?seed=abc` para repetir una run concreta y `?chunk=N` para empezar en el chunk N.
 
 ## Controles
 

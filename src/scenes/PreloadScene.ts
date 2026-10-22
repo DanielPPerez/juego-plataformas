@@ -1,4 +1,5 @@
 import Phaser from 'phaser';
+import { FONT } from '../config';
 
 // Carga todos los assets del juego; mientras no haya arte, genera placeholders
 export class PreloadScene extends Phaser.Scene {
@@ -8,7 +9,8 @@ export class PreloadScene extends Phaser.Scene {
 
   create() {
     this.makePlaceholders();
-    this.scene.start('Game');
+    // Esperar la fuente: si el texto se crea antes, Phaser lo dibuja con la fuente por defecto
+    document.fonts.load(`16px ${FONT}`).finally(() => this.scene.start('Game'));
   }
 
   private makePlaceholders() {

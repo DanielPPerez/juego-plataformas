@@ -10,7 +10,7 @@ import { chunks as bioma1, type ChunkDef } from './chunks/bioma1.ts';
 const CHUNK_W = 30;
 const CHUNK_H = 17;
 const TILE = 16;
-const EDGE_COLS = [0, 1, CHUNK_W - 2, CHUNK_W - 1];
+const FEET_ROW = { L: 14, M: 10, H: 6 };
 
 const GID: Record<string, number> = { '#': 1, '=': 2, '?': 3 };
 const OBJECT_TYPES: Record<string, string> = { P: 'player', X: 'exit', E: 'enemy', o: 'coin', C: 'chest' };
@@ -20,17 +20,26 @@ const force = process.argv.includes('--force');
 const tilesetImage = join(root, 'public/assets/tiles/placeholder-tiles.png');
 
 function buildGrid(def: ChunkDef): string[][] {
-  if (def.rows.length > CHUNK_H) throw new Error(`${def.name}: ${def.rows.length} filas (> ${CHUNK_H})`);
-  const rows = [...Array(CHUNK_H - def.rows.length).fill(''), ...def.rows];
+  const rows = Array.from({ length: CHUNK_H }, (_, y) => def.rows[y] ?? '');
   const grid = rows.map((line, y) => {
     if (line.length > CHUNK_W) throw new Error(`${def.name}: la fila ${y} mide ${line.length} (> ${CHUNK_W})`);
     return [...line.padEnd(CHUNK_W, '.')];
   });
 
-  for (const x of EDGE_COLS) {
-    const ground = grid[15][x] === '#' && grid[16][x] === '#';
-    const air = [11, 12, 13, 14].every((y) => !(grid[y][x] in GID));
-    if (!ground || !air) throw new Error(`${def.name}: la columna ${x} no cumple el contrato de bordes`);
+  // '^' = superficie del terreno: es sólida y todo lo que hay debajo también
+  for (let x = 0; x < CHUNK_W; x++) {
+    const top = grid.findIndex((row) => row[x] === '^');
+    if (top >= 0) for (let y = top; y < CHUNK_H; y++) grid[y][x] = '#';
+  }
+
+  // Contrato de bordes: suelo desde los pies hacia abajo y 4 filas de aire encima
+  const edges: [number[], number][] = [[[0, 1], FEET_ROW[def.entry]], [[CHUNK_W - 2, CHUNK_W - 1], FEET_ROW[def.exit]]];
+  for (const [cols, feet] of edges) {
+    for (const x of cols) {
+      const ground = grid.slice(feet + 1).every((row) => row[x] === '#');
+      const air = [0, 1, 2, 3].every((d) => !(grid[feet - d][x] in GID));
+      if (!ground || !air) throw new Error(`${def.name}: la columna ${x} no cumple el contrato de bordes`);
+    }
   }
   return grid;
 }
@@ -68,6 +77,8 @@ function toTiledJson(def: ChunkDef, outDir: string) {
     properties: [
       { name: 'kind', type: 'string', value: def.kind },
       { name: 'difficulty', type: 'int', value: def.difficulty },
+      { name: 'entry', type: 'string', value: def.entry },
+      { name: 'exit', type: 'string', value: def.exit },
     ],
     tilesets: [
       {

@@ -4,8 +4,10 @@ export const TILE_SIZE = 16;
 export const CHUNK_W = 30;
 export const CHUNK_H = 17;
 export const CHUNK_PX = CHUNK_W * TILE_SIZE;
-// Fila donde están los pies del jugador sobre el suelo en los bordes de cada chunk
-export const GROUND_ROW = 14;
+// Altura del suelo en los bordes de un chunk: baja, media o alta
+export type Height = 'L' | 'M' | 'H';
+// Fila donde están los pies del jugador sobre el suelo, según la altura
+export const FEET_ROW: Record<Height, number> = { L: 14, M: 10, H: 6 };
 
 export const Tile = {
   Empty: 0,

@@ -1,10 +1,14 @@
 import { RNG } from './RNG';
-import { CHUNK_H, CHUNK_W, GROUND_ROW, Tile, type Grid, type Point, type Spawn } from './level';
+import { CHUNK_H, CHUNK_W, FEET_ROW, Tile, type Grid, type Point, type Spawn } from './level';
 import { isReachable, type JumpAbility } from './LevelValidator';
 import { ChunkGid, type ChunkTemplate } from './chunks';
 
 // Probabilidad de que aparezca cada objeto marcado en el chunk
 const SPAWN_CHANCE: Record<string, number> = { enemy: 0.6, coin: 0.75, chest: 1 };
+// Los primeros chunks de cada nivel son fáciles; después puede salir cualquier dificultad
+const EASY_CHUNKS = 3;
+// No repetir un diseño (ni su espejo) dentro de los últimos N chunks
+const NO_REPEAT = 8;
 
 export interface LevelPlan {
   seed: string;
@@ -15,37 +19,35 @@ export interface LevelPlan {
 export interface ChunkInstance extends Grid {
   index: number;
   name: string;
+  entryRow: number;
+  exitRow: number;
   spawns: Spawn[];
   start?: Point;
   exit?: Point;
 }
 
+// ~40 chunks ≈ 5 minutos de juego
 export function normalChunkCount(levelIndex: number): number {
-  return 8 + 2 * (levelIndex - 1);
+  return 40 + 5 * (levelIndex - 1);
 }
 
-// Decide la secuencia de chunks del nivel: inicio → normales con dificultad creciente → salida.
+// Decide la secuencia de chunks del nivel encadenando alturas: la entrada de cada chunk es la salida del anterior.
 // Solo elige plantillas; el contenido se genera cuando hace falta (buildChunk).
 export function planLevel(seed: string, levelIndex: number, templates: ChunkTemplate[]): LevelPlan {
   const rng = new RNG(`${seed}:plan`);
-  const byKind = (kind: string) => templates.filter((t) => t.kind === kind);
-  const [start, exit] = [byKind('start'), byKind('exit')];
-  const normal = byKind('normal');
-  if (start.length === 0 || exit.length === 0 || normal.length === 0) {
-    throw new Error('Faltan chunks de inicio, salida o normales');
+  const of = (kind: string) => templates.filter((t) => t.kind === kind);
+  const chunks = [rng.pick(of('start'))];
+
+  for (let i = 0; i < normalChunkCount(levelIndex); i++) {
+    const height = chunks[chunks.length - 1].exit;
+    const maxDifficulty = i < EASY_CHUNKS ? 1 : 3;
+    const recent = chunks.slice(-NO_REPEAT).map((c) => c.base);
+    const fit = of('normal').filter((t) => t.entry === height && t.difficulty <= maxDifficulty);
+    const fresh = fit.filter((t) => !recent.includes(t.base));
+    chunks.push(rng.pick(fresh.length > 0 ? fresh : fit));
   }
 
-  const count = normalChunkCount(levelIndex);
-  const chunks = [rng.pick(start)];
-  for (let i = 0; i < count; i++) {
-    // La dificultad máxima sube a lo largo del nivel y con cada nivel
-    const maxDifficulty = Math.min(3, 1 + Math.floor((3 * i) / count) + (levelIndex - 1));
-    const prev = chunks[chunks.length - 1];
-    let candidates = normal.filter((t) => t.difficulty <= maxDifficulty && t !== prev);
-    if (candidates.length === 0) candidates = normal.filter((t) => t !== prev);
-    chunks.push(rng.pick(candidates));
-  }
-  chunks.push(rng.pick(exit));
+  chunks.push(rng.pick(of('exit').filter((t) => t.entry === chunks[chunks.length - 1].exit)));
   return { seed, chunks };
 }
 
@@ -70,7 +72,16 @@ export function resolveChunk(template: ChunkTemplate, index: number, rng: RNG, r
       : Tile.Empty;
   });
 
-  const instance: ChunkInstance = { index, name: template.name, width: CHUNK_W, height: CHUNK_H, tiles, spawns: [] };
+  const instance: ChunkInstance = {
+    index,
+    name: template.name,
+    width: CHUNK_W,
+    height: CHUNK_H,
+    tiles,
+    entryRow: FEET_ROW[template.entry],
+    exitRow: FEET_ROW[template.exit],
+    spawns: [],
+  };
   for (const obj of template.objects) {
     const p = { x: obj.x, y: obj.y };
     if (obj.type === 'player') instance.start = p;
@@ -82,8 +93,8 @@ export function resolveChunk(template: ChunkTemplate, index: number, rng: RNG, r
 
 // Se puede cruzar de la entrada (borde izquierdo o P) a la salida (borde derecho o X)
 export function isChunkCrossable(chunk: ChunkInstance, ability: JumpAbility): boolean {
-  const from = chunk.start ?? { x: 0, y: GROUND_ROW };
-  const to = chunk.exit ?? { x: CHUNK_W - 1, y: GROUND_ROW };
+  const from = chunk.start ?? { x: 0, y: chunk.entryRow };
+  const to = chunk.exit ?? { x: CHUNK_W - 1, y: chunk.exitRow };
   return isReachable(chunk, from, to, ability);
 }
 

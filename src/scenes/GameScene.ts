@@ -5,7 +5,8 @@ import { planLevel, type ChunkInstance } from '../systems/ChunkGenerator';
 import { ChunkStreamer } from '../systems/ChunkStreamer';
 import { getChunks } from '../systems/chunkLibrary';
 import { Input } from '../systems/Input';
-import { CHUNK_H, CHUNK_PX, CHUNK_W, GROUND_ROW, TILE_SIZE } from '../systems/level';
+import { ZOOM } from '../config';
+import { CHUNK_H, CHUNK_PX, CHUNK_W, TILE_SIZE } from '../systems/level';
 import { abilityFromConfig } from '../systems/LevelValidator';
 import { loadPlayerConfig } from '../systems/PlayerConfig';
 import { TuningPanel } from '../utils/TuningPanel';
@@ -36,8 +37,6 @@ export class GameScene extends Phaser.Scene {
   private coins = 0;
   private solidLayer!: Phaser.Tilemaps.TilemapLayer;
   private platformLayer!: Phaser.Tilemaps.TilemapLayer;
-  private hudText!: Phaser.GameObjects.Text;
-  private debugText!: Phaser.GameObjects.Text;
 
   constructor() {
     super('Game');
@@ -75,9 +74,11 @@ export class GameScene extends Phaser.Scene {
     this.streamer = new ChunkStreamer(plan, ability, this.solidLayer, this.platformLayer, (chunk, ox) =>
       this.spawnChunkObjects(chunk, ox),
     );
-    this.streamer.update(0);
-    const start = this.streamer.chunkAt(0)!.start!;
-    const startPos = tileToWorld(start.x, start.y);
+    // ?chunk=N empieza en ese chunk (depuración de diseños)
+    const debugChunk = Number(new URLSearchParams(location.search).get('chunk') ?? 0);
+    this.streamer.update(debugChunk * CHUNK_PX);
+    const first = this.streamer.chunkAt(debugChunk * CHUNK_PX)!;
+    const startPos = tileToWorld(first.start?.x ?? 1, first.start?.y ?? first.entryRow, first.index * CHUNK_PX);
     this.player.setPosition(startPos.x, startPos.y);
     this.updateBounds();
 
@@ -86,23 +87,16 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.overlap(this.player, this.coinGroup, (_p, coin) => {
       (coin as Phaser.Physics.Arcade.Image).destroy();
       this.coins++;
-      this.updateHud();
     });
 
-    this.cameras.main.startFollow(this.player, true, 0.15, 0.15);
+    this.cameras.main.setZoom(ZOOM).startFollow(this.player, true, 0.15, 0.15);
+    this.scene.launch('UI');
 
     this.panel = new TuningPanel(cfg);
     const kb = this.input.keyboard!;
     kb.addKey(Phaser.Input.Keyboard.KeyCodes.F1).on('down', () => this.panel.toggle());
     kb.addKey(Phaser.Input.Keyboard.KeyCodes.R).on('down', () => this.scene.restart({ runSeed: randomSeed() }));
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.panel.destroy());
-
-    const style = { fontSize: '8px', color: '#ffffff' };
-    this.hudText = this.add.text(4, 4, '', style).setScrollFactor(0).setDepth(10);
-    this.add.text(4, 258, 'F1 ajustes · Shift dash · S/Abajo bajar · R nueva run', { ...style, color: '#888888' })
-      .setScrollFactor(0).setDepth(10);
-    this.debugText = this.add.text(4, 14, '', { ...style, color: '#aaaaaa' }).setScrollFactor(0).setDepth(10);
-    this.updateHud();
   }
 
   update(_time: number, delta: number) {
@@ -117,18 +111,18 @@ export class GameScene extends Phaser.Scene {
 
     if (this.streamer.update(this.player.x)) this.updateBounds();
 
+    const chunk = this.streamer.chunkAt(this.player.x);
     // Caer a un hueco: reaparecer al inicio del chunk actual (la pérdida de vida llega en la fase 3)
-    if (this.player.y > CHUNK_H * TILE_SIZE + 32) {
-      const chunkIndex = Math.floor(this.player.x / CHUNK_PX);
-      const pos = tileToWorld(1, GROUND_ROW, chunkIndex * CHUNK_PX);
+    if (chunk && this.player.y > CHUNK_H * TILE_SIZE + 32) {
+      const pos = tileToWorld(1, chunk.entryRow, chunk.index * CHUNK_PX);
       this.player.setPosition(pos.x, pos.y);
       body.setVelocity(0, 0);
     }
 
-    const chunk = this.streamer.chunkAt(this.player.x);
-    this.debugText.setText(
-      `chunk ${chunk?.index ?? '-'}/${this.streamer.chunkCount - 1} ${chunk?.name ?? ''} · cargados ${this.streamer.loadedCount}`,
-    );
+    this.registry.set('hud', {
+      status: `Seed ${this.runSeed}  Nivel ${this.levelIndex}  Monedas ${this.coins}`,
+      debug: `Chunk ${chunk?.index ?? '-'}/${this.streamer.chunkCount - 1} ${chunk?.name ?? ''}`,
+    });
   }
 
   private updateBounds() {
@@ -159,9 +153,5 @@ export class GameScene extends Phaser.Scene {
 
   private nextLevel() {
     this.scene.restart({ runSeed: this.runSeed, levelIndex: this.levelIndex + 1, coins: this.coins });
-  }
-
-  private updateHud() {
-    this.hudText.setText(`Seed ${this.runSeed} · Nivel ${this.levelIndex} · Monedas ${this.coins}`);
   }
 }

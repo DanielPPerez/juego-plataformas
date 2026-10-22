@@ -13,7 +13,7 @@
 - **Género:** plataformas de **scroll lateral** (izquierda → derecha), **no** metroidvania: no hay exploración en cuadrícula ni backtracking.
 - **Referencias:** Mario Bros (estructura lateral de niveles), Dead Cells (loop de runs), Celeste (control preciso), Spelunky (chunks hechos a mano), Metal Slug 3 (jefes de persecución)
 - **Tema / ambientación original:** Medieval oscuro con horror cósmico lovecraftiano
-- **Duración de una run:** 10 min
+- **Duración de un nivel:** mínimo 5 min sin sentirse repetitivo (~40 chunks). Run completa (6 niveles + 3 jefes): ~35–40 min.
 
 ## 2. Pilares (máx. 3)
 
@@ -67,15 +67,17 @@ Inicio de run → Explorar nivel procedural → Enemigos / recompensas
 **Método: generación on-the-fly de chunks laterales hechos a mano.** El nivel es una franja horizontal que se va generando a la derecha mientras el jugador avanza.
 
 1. Diseñar chunks de 1 pantalla (30×17 tiles) en ASCII (`scripts/chunks/`) → `npm run chunks` los convierte a JSON de **Tiled**, que se pueden seguir editando en Tiled.
-2. **Contrato de bordes:** todo chunk entra y sale por el suelo (columnas 0–1 y 28–29 con suelo en las filas 15–16 y aire encima). Así cualquier chunk encaja detrás de cualquier otro.
-3. Cada chunk tiene una **dificultad** (1–3). Al empezar el nivel se decide la secuencia (inicio → N chunks con dificultad creciente → salida), sin repetir el mismo chunk dos veces seguidas.
-4. **On-the-fly:** el contenido de cada chunk (bloques aleatorios, enemigos, monedas) se genera cuando el jugador se acerca, con una RNG derivada de `seed:nivel:chunk`. Hay **máximo 3 chunks en memoria** (anterior, actual y siguiente); los que quedan atrás se destruyen y no se puede volver a ellos (como en Mario).
-5. Caer a un hueco = perder vida y reaparecer al inicio del chunk actual.
-6. **Seed** por run (para debug y para compartir runs).
+2. **3 alturas de terreno:** baja (L), media (M) y alta (H). Cada chunk declara su altura de entrada y de salida, y el generador encadena chunks cuya entrada coincide con la salida del anterior. Hay chunks llanos (L→L, M→M, H→H) y subidas (L→M, M→H, L→H).
+3. **Espejos:** cada chunk normal también se usa reflejado en horizontal (una subida L→M da una bajada M→L), lo que duplica la variedad sin diseñar más.
+4. **Contrato de bordes:** en las columnas 0–1 y 28–29 hay suelo justo bajo los pies de la altura declarada y 4 filas de aire encima.
+5. Cada chunk tiene una **dificultad** (1 fácil, 2 media, 3 difícil). Los **3 primeros chunks** de cada nivel son fáciles; después puede salir cualquiera. No se repite un diseño (ni su espejo) dentro de los últimos 8 chunks.
+6. **On-the-fly:** el contenido de cada chunk (bloques aleatorios, enemigos, monedas) se genera cuando el jugador se acerca, con una RNG derivada de `seed:nivel:chunk`. Hay **máximo 3 chunks en memoria** (anterior, actual y siguiente); los que quedan atrás se destruyen y no se puede volver a ellos (como en Mario).
+7. Caer a un hueco = perder vida y reaparecer al inicio del chunk actual.
+8. **Seed** por run (para debug y para compartir runs). `?chunk=N` en la URL empieza en el chunk N (depuración).
 
-- Chunks necesarios por bioma: **~10–15** (inicio, normales por dificultad, salida)
-- Longitud del nivel: ~10 chunks (≈1 min), +2 por nivel
-- **Validación:** cada chunk debe poder cruzarse de izquierda a derecha con la física del jugador (test BFS), y además un test genera 1000 niveles completos y comprueba que todos se pueden completar. Si los bloques aleatorios bloquean un chunk, se quitan.
+- Chunks por bioma: **~30 diseños** (×2 con espejos), repartidos entre las 3 alturas y las 3 dificultades, + inicio y 3 salidas (una por altura)
+- Longitud del nivel: 40 chunks (≈5 min), +5 por nivel
+- **Validación:** cada chunk debe poder cruzarse de su entrada a su salida con la física del jugador, incluidos doble salto y dash (test BFS), y además un test genera 1000 niveles completos y comprueba que todos se pueden completar. Si los bloques aleatorios bloquean un chunk, se quitan.
 
 ### 6.1 Arena de jefe: persecución con scroll forzado
 

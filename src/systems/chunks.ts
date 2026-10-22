@@ -1,4 +1,4 @@
-import { CHUNK_H, CHUNK_W, TILE_SIZE } from './level';
+import { CHUNK_H, CHUNK_W, TILE_SIZE, type Height } from './level';
 
 export type ChunkKind = 'start' | 'normal' | 'exit';
 
@@ -7,8 +7,12 @@ export const ChunkGid = { Empty: 0, Solid: 1, Platform: 2, Random: 3 } as const;
 
 export interface ChunkTemplate {
   name: string;
+  // Nombre sin el sufijo de espejo: sirve para no repetir el mismo diseño seguido
+  base: string;
   kind: ChunkKind;
   difficulty: number;
+  entry: Height;
+  exit: Height;
   tiles: number[];
   objects: { type: string; x: number; y: number }[];
 }
@@ -42,9 +46,26 @@ export function parseTiledChunk(name: string, map: TiledMap): ChunkTemplate {
 
   return {
     name,
+    base: name,
     kind: (prop('kind') ?? 'normal') as ChunkKind,
     difficulty: Number(prop('difficulty') ?? 1),
+    entry: (prop('entry') ?? 'L') as Height,
+    exit: (prop('exit') ?? 'L') as Height,
     tiles: terrain.data,
     objects,
+  };
+}
+
+// Versión reflejada en horizontal: entra por donde salía el original
+export function mirrorChunk(t: ChunkTemplate): ChunkTemplate {
+  const tiles: number[] = [];
+  for (let y = 0; y < CHUNK_H; y++) tiles.push(...t.tiles.slice(y * CHUNK_W, (y + 1) * CHUNK_W).reverse());
+  return {
+    ...t,
+    name: `${t.name}~m`,
+    entry: t.exit,
+    exit: t.entry,
+    tiles,
+    objects: t.objects.map((o) => ({ ...o, x: CHUNK_W - 1 - o.x })),
   };
 }

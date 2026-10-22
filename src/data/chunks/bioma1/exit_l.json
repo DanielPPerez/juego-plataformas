@@ -15,12 +15,22 @@
   {
    "name": "kind",
    "type": "string",
-   "value": "normal"
+   "value": "exit"
   },
   {
    "name": "difficulty",
    "type": "int",
-   "value": 1
+   "value": 0
+  },
+  {
+   "name": "entry",
+   "type": "string",
+   "value": "L"
+  },
+  {
+   "name": "exit",
+   "type": "string",
+   "value": "L"
   }
  ],
  "tilesets": [
@@ -513,9 +523,6 @@
     1,
     1,
     1,
-    0,
-    0,
-    0,
     1,
     1,
     1,
@@ -543,9 +550,12 @@
     1,
     1,
     1,
-    0,
-    0,
-    0,
+    1,
+    1,
+    1,
+    1,
+    1,
+    1,
     1,
     1,
     1,
@@ -576,7 +586,7 @@
      "id": 1,
      "name": "coin",
      "type": "coin",
-     "x": 192,
+     "x": 32,
      "y": 192,
      "width": 16,
      "height": 16,
@@ -587,7 +597,7 @@
      "id": 2,
      "name": "coin",
      "type": "coin",
-     "x": 208,
+     "x": 64,
      "y": 192,
      "width": 16,
      "height": 16,
@@ -598,7 +608,7 @@
      "id": 3,
      "name": "coin",
      "type": "coin",
-     "x": 224,
+     "x": 96,
      "y": 192,
      "width": 16,
      "height": 16,
@@ -607,9 +617,9 @@
     },
     {
      "id": 4,
-     "name": "enemy",
-     "type": "enemy",
-     "x": 96,
+     "name": "exit",
+     "type": "exit",
+     "x": 352,
      "y": 224,
      "width": 16,
      "height": 16,
