@@ -8,7 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "rooms": "node scripts/make-rooms.ts"
+    "chunks": "node scripts/make-chunks.ts"
   },
   "dependencies": {
     "phaser": "^3.90.0",

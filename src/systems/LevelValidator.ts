@@ -1,4 +1,4 @@
-import { Tile, TILE_SIZE, tileAt, type Level } from './level';
+import { Tile, TILE_SIZE, tileAt, type Grid, type Point } from './level';
 
 // Capacidad de salto del jugador en tiles, estimada a la baja para que "alcanzable" sea seguro
 export interface JumpAbility {
@@ -7,6 +7,7 @@ export interface JumpAbility {
 }
 
 interface JumpConfig {
+  maxRunSpeed: number;
   jumpVelocity: number;
   airJumps: number;
   airJumpVelocity: number;
@@ -15,21 +16,24 @@ interface JumpConfig {
 
 export function abilityFromConfig(cfg: JumpConfig): JumpAbility {
   const rise = (cfg.jumpVelocity ** 2 + cfg.airJumps * cfg.airJumpVelocity ** 2) / (2 * cfg.gravity);
-  return { maxRise: Math.max(1, Math.floor(rise / TILE_SIZE) - 1), maxReach: 3 };
+  // Distancia horizontal de un salto simple completo (sin dash ni doble salto)
+  const reach = (cfg.maxRunSpeed * 2 * cfg.jumpVelocity) / cfg.gravity;
+  return {
+    maxRise: Math.max(1, Math.floor(rise / TILE_SIZE) - 1),
+    maxReach: Math.max(1, Math.min(4, Math.floor(reach / TILE_SIZE) - 1)),
+  };
 }
-
-type Grid = Pick<Level, 'width' | 'height' | 'tiles'>;
 
 // BFS sobre las celdas donde el jugador (1×2 tiles) puede estar de pie.
 // Movimientos: caminar, caer, bajar de plataforma, y saltar = subir recto h tiles + avanzar d tiles + caer.
-export function reachableCells(level: Grid & Pick<Level, 'start'>, ability: JumpAbility): Set<number> {
-  const { width, height } = level;
-  const solid = (x: number, y: number) => tileAt(level, x, y) === Tile.Solid;
-  const platform = (x: number, y: number) => tileAt(level, x, y) === Tile.Platform;
+export function reachableCells(grid: Grid, from: Point, ability: JumpAbility): Set<number> {
+  const { width, height } = grid;
+  const solid = (x: number, y: number) => tileAt(grid, x, y) === Tile.Solid;
+  const platform = (x: number, y: number) => tileAt(grid, x, y) === Tile.Platform;
   const clear = (x: number, y: number) => y >= 1 && !solid(x, y) && !solid(x, y - 1);
   const standing = (x: number, y: number) => clear(x, y) && (solid(x, y + 1) || platform(x, y + 1));
 
-  // Devuelve la celda donde aterriza cayendo desde (x, y), o -1 si sale del mapa
+  // Celda donde aterriza cayendo desde (x, y), o -1 si cae fuera del mapa (hueco)
   const fall = (x: number, y: number): number => {
     while (y < height) {
       if (standing(x, y)) return y * width + x;
@@ -48,7 +52,7 @@ export function reachableCells(level: Grid & Pick<Level, 'start'>, ability: Jump
     }
   };
 
-  push(fall(level.start.x, level.start.y));
+  push(fall(from.x, from.y));
   while (queue.length > 0) {
     const key = queue.pop()!;
     const x = key % width;
@@ -75,6 +79,6 @@ export function reachableCells(level: Grid & Pick<Level, 'start'>, ability: Jump
   return visited;
 }
 
-export function isCompletable(level: Grid & Pick<Level, 'start' | 'exit'>, ability: JumpAbility): boolean {
-  return reachableCells(level, ability).has(level.exit.y * level.width + level.exit.x);
+export function isReachable(grid: Grid, from: Point, to: Point, ability: JumpAbility): boolean {
+  return reachableCells(grid, from, ability).has(to.y * grid.width + to.x);
 }

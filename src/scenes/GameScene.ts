@@ -1,12 +1,13 @@
 import Phaser from 'phaser';
 import playerDefaults from '../data/player.json';
 import { Knight } from '../entities/player/Knight';
+import { planLevel, type ChunkInstance } from '../systems/ChunkGenerator';
+import { ChunkStreamer } from '../systems/ChunkStreamer';
+import { getChunks } from '../systems/chunkLibrary';
 import { Input } from '../systems/Input';
-import { Tile, TILE_SIZE, type Level } from '../systems/level';
-import { generateLevel } from '../systems/LevelGenerator';
+import { CHUNK_H, CHUNK_PX, CHUNK_W, GROUND_ROW, TILE_SIZE } from '../systems/level';
 import { abilityFromConfig } from '../systems/LevelValidator';
 import { loadPlayerConfig } from '../systems/PlayerConfig';
-import { getRooms } from '../systems/roomLibrary';
 import { TuningPanel } from '../utils/TuningPanel';
 
 interface GameSceneData {
@@ -19,11 +20,17 @@ function randomSeed(): string {
   return Math.random().toString(36).slice(2, 8);
 }
 
+// Centro horizontal de la celda; en vertical, a la altura en que el sprite de 32 px apoya en el suelo
+function tileToWorld(x: number, y: number, offsetX = 0) {
+  return { x: offsetX + x * TILE_SIZE + TILE_SIZE / 2, y: y * TILE_SIZE };
+}
+
 export class GameScene extends Phaser.Scene {
   private player!: Knight;
   private controls!: Input;
   private panel!: TuningPanel;
-  private level!: Level;
+  private streamer!: ChunkStreamer;
+  private coinGroup!: Phaser.Physics.Arcade.StaticGroup;
   private runSeed = '';
   private levelIndex = 1;
   private coins = 0;
@@ -45,22 +52,43 @@ export class GameScene extends Phaser.Scene {
 
   create() {
     // Validar con la config por defecto (no la del panel F1) para que una seed siempre dé el mismo nivel
-    this.level = generateLevel(`${this.runSeed}:${this.levelIndex}`, getRooms('bioma1'), abilityFromConfig(playerDefaults));
-    this.buildTilemap();
+    const ability = abilityFromConfig(playerDefaults);
+    const plan = planLevel(`${this.runSeed}:${this.levelIndex}`, this.levelIndex, getChunks('bioma1'));
 
-    const cfg = loadPlayerConfig();
+    const map = this.make.tilemap({
+      width: plan.chunks.length * CHUNK_W,
+      height: CHUNK_H,
+      tileWidth: TILE_SIZE,
+      tileHeight: TILE_SIZE,
+    });
+    const tileset = map.addTilesetImage('tiles')!;
+    this.solidLayer = map.createBlankLayer('solid', tileset)!;
+    this.platformLayer = map.createBlankLayer('platforms', tileset)!;
+
+    this.coinGroup = this.physics.add.staticGroup();
     this.controls = new Input(this);
-    const start = this.tileToWorld(this.level.start);
-    this.player = new Knight(this, start.x, start.y, this.controls, cfg);
+    const cfg = loadPlayerConfig();
+    this.player = new Knight(this, 0, 0, this.controls, cfg);
+    this.player.body.setCollideWorldBounds(true);
+    this.physics.world.setBoundsCollision(true, true, true, false);
+
+    this.streamer = new ChunkStreamer(plan, ability, this.solidLayer, this.platformLayer, (chunk, ox) =>
+      this.spawnChunkObjects(chunk, ox),
+    );
+    this.streamer.update(0);
+    const start = this.streamer.chunkAt(0)!.start!;
+    const startPos = tileToWorld(start.x, start.y);
+    this.player.setPosition(startPos.x, startPos.y);
+    this.updateBounds();
+
     this.physics.add.collider(this.player, this.solidLayer);
     this.physics.add.collider(this.player, this.platformLayer, undefined, () => !this.player.isDropping);
+    this.physics.add.overlap(this.player, this.coinGroup, (_p, coin) => {
+      (coin as Phaser.Physics.Arcade.Image).destroy();
+      this.coins++;
+      this.updateHud();
+    });
 
-    this.spawnObjects();
-
-    const w = this.level.width * TILE_SIZE;
-    const h = this.level.height * TILE_SIZE;
-    this.physics.world.setBounds(0, 0, w, h);
-    this.cameras.main.setBounds(0, 0, w, h);
     this.cameras.main.startFollow(this.player, true, 0.15, 0.15);
 
     this.panel = new TuningPanel(cfg);
@@ -71,7 +99,7 @@ export class GameScene extends Phaser.Scene {
 
     const style = { fontSize: '8px', color: '#ffffff' };
     this.hudText = this.add.text(4, 4, '', style).setScrollFactor(0).setDepth(10);
-    this.add.text(4, 258, 'F1 ajustes · Shift dash · Abajo+Salto bajar · R nueva run', { ...style, color: '#888888' })
+    this.add.text(4, 258, 'F1 ajustes · Shift dash · S/Abajo bajar · R nueva run', { ...style, color: '#888888' })
       .setScrollFactor(0).setDepth(10);
     this.debugText = this.add.text(4, 14, '', { ...style, color: '#aaaaaa' }).setScrollFactor(0).setDepth(10);
     this.updateHud();
@@ -87,57 +115,46 @@ export class GameScene extends Phaser.Scene {
     this.controls.update();
     this.player.update(dt);
 
-    if (this.player.y > this.physics.world.bounds.height + 32) {
-      const start = this.tileToWorld(this.level.start);
-      this.player.setPosition(start.x, start.y);
+    if (this.streamer.update(this.player.x)) this.updateBounds();
+
+    // Caer a un hueco: reaparecer al inicio del chunk actual (la pérdida de vida llega en la fase 3)
+    if (this.player.y > CHUNK_H * TILE_SIZE + 32) {
+      const chunkIndex = Math.floor(this.player.x / CHUNK_PX);
+      const pos = tileToWorld(1, GROUND_ROW, chunkIndex * CHUNK_PX);
+      this.player.setPosition(pos.x, pos.y);
       body.setVelocity(0, 0);
     }
 
+    const chunk = this.streamer.chunkAt(this.player.x);
     this.debugText.setText(
-      `vx ${body.velocity.x.toFixed(0)} vy ${body.velocity.y.toFixed(0)} suelo ${this.player.onFloor ? 'sí' : 'no'}`,
+      `chunk ${chunk?.index ?? '-'}/${this.streamer.chunkCount - 1} ${chunk?.name ?? ''} · cargados ${this.streamer.loadedCount}`,
     );
   }
 
-  private buildTilemap() {
-    const { width, height, tiles } = this.level;
-    const map = this.make.tilemap({ width, height, tileWidth: TILE_SIZE, tileHeight: TILE_SIZE });
-    const tileset = map.addTilesetImage('tiles')!;
-    this.solidLayer = map.createBlankLayer('solid', tileset)!;
-    this.platformLayer = map.createBlankLayer('platforms', tileset)!;
-
-    for (let y = 0; y < height; y++) {
-      for (let x = 0; x < width; x++) {
-        const t = tiles[y * width + x];
-        if (t === Tile.Solid) this.solidLayer.putTileAt(0, x, y);
-        else if (t === Tile.Platform) this.platformLayer.putTileAt(1, x, y);
-      }
-    }
-    this.solidLayer.setCollision(0);
-    this.platformLayer.setCollision(1);
-    // Plataformas atravesables: solo colisionan por arriba
-    this.platformLayer.forEachTile((tile) => {
-      if (tile.index === 1) tile.setCollision(false, false, true, false, false);
-    });
+  private updateBounds() {
+    const left = this.streamer.leftBound;
+    const width = this.streamer.rightBound - left;
+    const height = CHUNK_H * TILE_SIZE;
+    this.physics.world.setBounds(left, 0, width, height + 64);
+    this.cameras.main.setBounds(left, 0, width, height);
   }
 
-  private spawnObjects() {
-    const exitPos = this.tileToWorld(this.level.exit);
-    const exit = this.physics.add.staticImage(exitPos.x, exitPos.y, 'exit');
-    this.physics.add.overlap(this.player, exit, () => this.nextLevel());
-
-    const coins = this.physics.add.staticGroup();
-    for (const s of this.level.spawns) {
-      const x = s.x * TILE_SIZE + TILE_SIZE / 2;
-      const y = s.y * TILE_SIZE + TILE_SIZE / 2;
-      if (s.type === 'coin') coins.create(x, y, 'coin');
-      else if (s.type === 'chest') this.add.image(x, y + 3, 'chest');
-      else if (s.type === 'enemy') this.add.image(x, y, 'enemy-marker');
+  private spawnChunkObjects(chunk: ChunkInstance, offsetX: number): Phaser.GameObjects.GameObject[] {
+    const objects: Phaser.GameObjects.GameObject[] = [];
+    if (chunk.exit) {
+      const p = tileToWorld(chunk.exit.x, chunk.exit.y, offsetX);
+      const exit = this.physics.add.staticImage(p.x, p.y, 'exit');
+      this.physics.add.overlap(this.player, exit, () => this.nextLevel());
+      objects.push(exit);
     }
-    this.physics.add.overlap(this.player, coins, (_p, coin) => {
-      (coin as Phaser.Physics.Arcade.Image).destroy();
-      this.coins++;
-      this.updateHud();
-    });
+    for (const s of chunk.spawns) {
+      const x = offsetX + s.x * TILE_SIZE + TILE_SIZE / 2;
+      const y = s.y * TILE_SIZE + TILE_SIZE / 2;
+      if (s.type === 'coin') objects.push(this.coinGroup.create(x, y, 'coin'));
+      else if (s.type === 'chest') objects.push(this.add.image(x, y + 3, 'chest'));
+      else if (s.type === 'enemy') objects.push(this.add.image(x, y, 'enemy-marker'));
+    }
+    return objects;
   }
 
   private nextLevel() {
@@ -146,10 +163,5 @@ export class GameScene extends Phaser.Scene {
 
   private updateHud() {
     this.hudText.setText(`Seed ${this.runSeed} · Nivel ${this.levelIndex} · Monedas ${this.coins}`);
-  }
-
-  // Centro horizontal de la celda; en vertical, a la altura en que el sprite de 32 px apoya en el suelo
-  private tileToWorld(p: { x: number; y: number }) {
-    return { x: p.x * TILE_SIZE + TILE_SIZE / 2, y: p.y * TILE_SIZE };
   }
 }

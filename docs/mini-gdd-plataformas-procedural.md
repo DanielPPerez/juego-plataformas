@@ -10,7 +10,8 @@
 
 - **Una frase:** "Un plataformas con generación de mapa procedural donde te enfrentas a enemigos y jefes."
 - **Gancho / qué lo hace distinto:** Plataformas medieval estilo retro contra monstruos lovecraftianos; los jefes son persecuciones con scroll forzado (estilo Metal Slug 3) y los 3 son partes de una misma entidad que se fusiona al final.
-- **Referencias:** Spelunky (generación por chunks), Dead Cells (loop de runs), Celeste (control preciso), Mario Bros, Metal Slug 3 (jefes de persecución)
+- **Género:** plataformas de **scroll lateral** (izquierda → derecha), **no** metroidvania: no hay exploración en cuadrícula ni backtracking.
+- **Referencias:** Mario Bros (estructura lateral de niveles), Dead Cells (loop de runs), Celeste (control preciso), Spelunky (chunks hechos a mano), Metal Slug 3 (jefes de persecución)
 - **Tema / ambientación original:** Medieval oscuro con horror cósmico lovecraftiano
 - **Duración de una run:** 10 min
 
@@ -56,31 +57,32 @@ Inicio de run → Explorar nivel procedural → Enemigos / recompensas
 
 - Movimiento: correr, saltar, salto variable, coyote time (~100 ms), jump buffer (~100 ms)
 - Extra: **dash** (con i-frames, 1 en el aire) + **doble salto** (decidido en la semana 1: sin él las plataformas altas quedaban fuera de alcance). Wall jump descartado.
-- Plataformas atravesables: se suben desde abajo; **Abajo (S/↓) + Salto** para bajar
+- Plataformas atravesables: se suben desde abajo; **Abajo (S/↓)** para bajar
 - Combate: Melee (Caballero) · Disparo (Mago)
 - Vida: 5 corazones · i-frames tras recibir daño
 - Controles: teclado (A/D o flechas para moverse, W/Espacio salto) + mouse (clic izq. ataque normal, clic der. habilidad). El aim del Mago sigue al cursor. Gamepad opcional en v1.1
 
 ## 6. Generación procedural
 
-**Método: chunks hechos a mano + ensamblado procedural (estilo Spelunky).**
+**Método: generación on-the-fly de chunks laterales hechos a mano.** El nivel es una franja horizontal que se va generando a la derecha mientras el jugador avanza.
 
-1. Diseñar salas de 1 pantalla (30×17 tiles) en ASCII (`scripts/rooms/`) → `npm run rooms` las convierte a JSON de **Tiled**, que se pueden seguir editando en Tiled.
-2. Cada sala tiene etiquetas de salidas: `L`, `R`, `U`, `D`.
-3. El generador crea una grilla (ej. 4×4) y traza un **camino garantizado** de inicio a salida.
-4. Rellena el camino con salas cuyas salidas encajen; el resto, con salas opcionales (cofres, desafíos).
-5. Variación dentro de la sala: spawns de enemigos/objetos con probabilidad.
+1. Diseñar chunks de 1 pantalla (30×17 tiles) en ASCII (`scripts/chunks/`) → `npm run chunks` los convierte a JSON de **Tiled**, que se pueden seguir editando en Tiled.
+2. **Contrato de bordes:** todo chunk entra y sale por el suelo (columnas 0–1 y 28–29 con suelo en las filas 15–16 y aire encima). Así cualquier chunk encaja detrás de cualquier otro.
+3. Cada chunk tiene una **dificultad** (1–3). Al empezar el nivel se decide la secuencia (inicio → N chunks con dificultad creciente → salida), sin repetir el mismo chunk dos veces seguidas.
+4. **On-the-fly:** el contenido de cada chunk (bloques aleatorios, enemigos, monedas) se genera cuando el jugador se acerca, con una RNG derivada de `seed:nivel:chunk`. Hay **máximo 3 chunks en memoria** (anterior, actual y siguiente); los que quedan atrás se destruyen y no se puede volver a ellos (como en Mario).
+5. Caer a un hueco = perder vida y reaparecer al inicio del chunk actual.
 6. **Seed** por run (para debug y para compartir runs).
 
-- Salas necesarias por bioma: **~15–20** (inicio, normales, cofre, salida, antesala del jefe)
-- **Validación:** todo nivel generado debe ser completable (camino garantizado + test automático con seeds)
+- Chunks necesarios por bioma: **~10–15** (inicio, normales por dificultad, salida)
+- Longitud del nivel: ~10 chunks (≈1 min), +2 por nivel
+- **Validación:** cada chunk debe poder cruzarse de izquierda a derecha con la física del jugador (test BFS), y además un test genera 1000 niveles completos y comprueba que todos se pueden completar. Si los bloques aleatorios bloquean un chunk, se quitan.
 
 ### 6.1 Arena de jefe: persecución con scroll forzado
 
 El mapa del jefe **también es procedural**, pero lineal y horizontal:
 
 - Se usa un **pool de "chunks de persecución"** (franjas de 1 pantalla de ancho: puentes, plataformas que caen, huecos, obstáculos). Mínimo **8 por bioma**.
-- **Streaming:** se generan chunks a la derecha de la cámara y se destruyen los que salen por la izquierda (máx. 3 en memoria).
+- **Streaming:** el mismo `ChunkStreamer` de los niveles: se generan chunks a la derecha de la cámara y se destruyen los que salen por la izquierda (máx. 3 en memoria).
 - **Modo A — "Te persigue"** (entra por la izquierda): la cámara avanza sola y el borde izquierdo es zona de muerte / contacto con el jefe. El jugador debe avanzar y atacar hacia atrás.
 - **Modo B — "Huye"** (entra por la derecha): el jefe retrocede y el jugador lo sigue. Si se aleja demasiado, el jefe se cura o invoca enemigos.
 - Velocidad de scroll ajustable por fase (ej. 40 → 60 px/s).
@@ -188,13 +190,14 @@ src/
     enemies/             # Enemy (base), behaviors/ (Patrol, Flyer, Shooter)
     bosses/              # Boss (base + state machine), KeyBoss, GateBoss, GuardianBoss
   systems/
-    LevelGenerator.ts    # grilla de salas
-    ChaseStreamer.ts     # chunks de persecución + auto-scroll
+    ChunkGenerator.ts    # secuencia de chunks + contenido on-the-fly (sin Phaser, testeable)
+    ChunkStreamer.ts     # carga/descarga chunks alrededor del jugador (niveles y persecución)
+    LevelValidator.ts    # BFS de alcanzabilidad
     RNG.ts               # seeded
     Upgrades.ts
     SaveData.ts
   data/
-    rooms/*.json         # Tiled (niveles)
+    chunks/<bioma>/*.json  # Tiled (chunks de nivel)
     chase/*.json         # Tiled (chunks de persecución)
     enemies.json, upgrades.json, bosses.json
   utils/
@@ -213,13 +216,13 @@ src/
 | Semana | Entregable                                                      | Criterio de "hecho"                                           |
 | ------ | --------------------------------------------------------------- | ------------------------------------------------------------- |
 | 1–2   | **Movimiento (Caballero)**                                | Saltar se siente bien en una sala de prueba                   |
-| 3–4   | **Generador**                                             | 4×4 salas, seed, siempre completable, 10 salas del bioma 1   |
+| 3–4   | **Generador**                                             | Chunks laterales on-the-fly, seed, siempre completable, 10 chunks del bioma 1 |
 | 5      | **Combate + Cultista + Rata**                             | Se puede morir y matar; hitstop y shake                       |
-| 6–7   | **ChaseStreamer + La Llave**                              | Persecución modo A con 2 fases y ejecución                  |
+| 6–7   | **Persecución (ChunkStreamer + auto-scroll) + La Llave**  | Persecución modo A con 2 fases y ejecución                  |
 | 8      | **Loop completo bioma 1**                                 | Menú → nivel → mejora → nivel → jefe → victoria/derrota |
 | —     | **🚦 Checkpoint: demo en itch.io**                        | Pedir feedback antes de seguir                                |
 | 9      | **Mago**                                                  | Aim con mouse, proyectiles con pooling                        |
-| 10–11 | Biomas 2 y 3 (salas, chunks, enemigos)                          | Solo contenido, reutilizando sistemas                         |
+| 10–11 | Biomas 2 y 3 (chunks de nivel y de persecución, enemigos)       | Solo contenido, reutilizando sistemas                         |
 | 12–13 | La Puerta (modo B) + El Guardián (fusión) + mejoras restantes |                                                               |
 | 14     | Pulido, audio, arte final, release                              | Sin crashes, 60 FPS en laptop media                           |
 

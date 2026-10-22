@@ -6,22 +6,22 @@ Phaser 3 + TypeScript + Vite. Diseño en [docs/mini-gdd-plataformas-procedural.m
 
 - `npm run dev`: servidor de desarrollo
 - `npm run build`: build de producción en `dist/` (comprimir en zip para itch.io)
-- `npm test`: tests del generador (1000 seeds, todas completables)
-- `npm run rooms`: convierte las salas ASCII de `scripts/rooms/` a JSON de Tiled (`-- --force` para sobrescribir)
+- `npm test`: tests del generador (cada chunk se puede cruzar + 1000 niveles completables)
+- `npm run chunks`: convierte los chunks ASCII de `scripts/chunks/` a JSON de Tiled (`-- --force` para sobrescribir)
 
 Abre el juego con `?seed=abc` para repetir una run concreta.
 
 ## Controles
 
-A/D o flechas: moverse · W/Espacio: saltar (doble salto en el aire) · Shift: dash · Abajo + Salto: bajar de una plataforma · F1: panel de ajuste · R: nueva run
+A/D o flechas: moverse · W/Espacio: saltar (doble salto en el aire) · Shift: dash · S o Abajo: bajar de una plataforma · F1: panel de ajuste · R: nueva run
 
 ## Carpetas
 
 - `docs/`: GDD y notas de diseño
-- `tiled/`: archivos fuente de Tiled (.tmx / .tsx); se exportan a JSON en `src/data/`
+- `scripts/chunks/`: chunks de nivel en ASCII; `npm run chunks` los convierte a JSON de Tiled en `src/data/chunks/`
 - `public/assets/`: sprites, tiles, fondos, UI, fuentes y audio
 - `src/scenes/`: escenas de Phaser
 - `src/entities/`: jugador, enemigos y jefes
-- `src/systems/`: generador de niveles, streaming de persecución, RNG, mejoras, guardado
-- `src/data/`: salas, chunks y datos de enemigos/mejoras/jefes en JSON
+- `src/systems/`: generador y streaming de chunks, validador, RNG, mejoras, guardado
+- `src/data/`: chunks y datos de jugador/enemigos/mejoras/jefes en JSON
 - `tests/`: tests del generador con seeds

@@ -112,12 +112,14 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
       : (accelerating ? cfg.airAccel : cfg.airDecel);
     body.setVelocityX(approach(body.velocity.x, target, rate * dt));
 
-    // Abajo + salto sobre plataforma atravesable: bajar; si no, salto (coyote + buffer) o doble salto
+    // Abajo sobre plataforma atravesable: bajar
+    if (this.controls.downHeld && this.onFloor && this.standingOnOneWay && !this.isDropping) {
+      this.dropTimer = cfg.dropThroughMs;
+    }
+
+    // Salto (coyote + buffer) o doble salto
     if (this.jumpBufferTimer > 0) {
-      if (this.controls.downHeld && this.onFloor && this.standingOnOneWay) {
-        this.dropTimer = cfg.dropThroughMs;
-        this.jumpBufferTimer = 0;
-      } else if (this.coyoteTimer > 0) {
+      if (this.coyoteTimer > 0) {
         this.jump(cfg.jumpVelocity);
       } else if (this.airJumpsLeft > 0) {
         this.airJumpsLeft--;

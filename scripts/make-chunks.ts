@@ -1,19 +1,16 @@
-// Convierte las salas ASCII de scripts/rooms/*.ts en mapas JSON de Tiled (src/data/rooms/<bioma>/).
-// Uso: npm run rooms            (no sobrescribe salas existentes: pueden haberse editado en Tiled)
-//      npm run rooms -- --force (regenera todas)
+// Convierte los chunks ASCII de scripts/chunks/*.ts en mapas JSON de Tiled (src/data/chunks/<bioma>/).
+// Uso: npm run chunks            (no sobrescribe chunks existentes: pueden haberse editado en Tiled)
+//      npm run chunks -- --force (regenera todos)
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import { deflateSync } from 'node:zlib';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { rooms as bioma1, type RoomDef } from './rooms/bioma1.ts';
+import { chunks as bioma1, type ChunkDef } from './chunks/bioma1.ts';
 
-const ROOM_W = 30;
-const ROOM_H = 17;
-const INNER_W = ROOM_W - 2;
-const INNER_H = 14;
+const CHUNK_W = 30;
+const CHUNK_H = 17;
 const TILE = 16;
-const SIDE_OPENING_ROWS = [11, 12, 13, 14];
-const VERTICAL_OPENING_COLS = [12, 13, 14, 15, 16, 17];
+const EDGE_COLS = [0, 1, CHUNK_W - 2, CHUNK_W - 1];
 
 const GID: Record<string, number> = { '#': 1, '=': 2, '?': 3 };
 const OBJECT_TYPES: Record<string, string> = { P: 'player', X: 'exit', E: 'enemy', o: 'coin', C: 'chest' };
@@ -22,30 +19,24 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const force = process.argv.includes('--force');
 const tilesetImage = join(root, 'public/assets/tiles/placeholder-tiles.png');
 
-function buildRoom(def: RoomDef) {
-  if (def.rows.length !== INNER_H) throw new Error(`${def.name}: ${def.rows.length} filas, se esperaban ${INNER_H}`);
-  const grid: string[][] = [];
-  for (let y = 0; y < ROOM_H; y++) {
-    const row: string[] = [];
-    for (let x = 0; x < ROOM_W; x++) {
-      const border = x === 0 || x === ROOM_W - 1 || y === 0 || y >= ROOM_H - 2;
-      row.push(border ? '#' : '.');
-    }
-    grid.push(row);
-  }
-
-  def.rows.forEach((line, i) => {
-    if (line.length > INNER_W) throw new Error(`${def.name}: la fila ${i + 1} mide ${line.length} (> ${INNER_W})`);
-    [...line.padEnd(INNER_W, '.')].forEach((ch, x) => (grid[i + 1][x + 1] = ch));
+function buildGrid(def: ChunkDef): string[][] {
+  if (def.rows.length > CHUNK_H) throw new Error(`${def.name}: ${def.rows.length} filas (> ${CHUNK_H})`);
+  const rows = [...Array(CHUNK_H - def.rows.length).fill(''), ...def.rows];
+  const grid = rows.map((line, y) => {
+    if (line.length > CHUNK_W) throw new Error(`${def.name}: la fila ${y} mide ${line.length} (> ${CHUNK_W})`);
+    return [...line.padEnd(CHUNK_W, '.')];
   });
 
-  for (const exit of def.exits) {
-    if (exit === 'L') SIDE_OPENING_ROWS.forEach((y) => (grid[y][0] = '.'));
-    if (exit === 'R') SIDE_OPENING_ROWS.forEach((y) => (grid[y][ROOM_W - 1] = '.'));
-    if (exit === 'U') VERTICAL_OPENING_COLS.forEach((x) => (grid[0][x] = '.'));
-    if (exit === 'D') VERTICAL_OPENING_COLS.forEach((x) => (grid[ROOM_H - 2][x] = grid[ROOM_H - 1][x] = '.'));
+  for (const x of EDGE_COLS) {
+    const ground = grid[15][x] === '#' && grid[16][x] === '#';
+    const air = [11, 12, 13, 14].every((y) => !(grid[y][x] in GID));
+    if (!ground || !air) throw new Error(`${def.name}: la columna ${x} no cumple el contrato de bordes`);
   }
+  return grid;
+}
 
+function toTiledJson(def: ChunkDef, outDir: string) {
+  const grid = buildGrid(def);
   const data: number[] = [];
   const objects: object[] = [];
   let nextId = 1;
@@ -61,11 +52,6 @@ function buildRoom(def: RoomDef) {
     }),
   );
 
-  return { data, objects, nextObjectId: nextId };
-}
-
-function toTiledJson(def: RoomDef, outDir: string) {
-  const { data, objects, nextObjectId } = buildRoom(def);
   return {
     type: 'map',
     version: '1.10',
@@ -73,15 +59,15 @@ function toTiledJson(def: RoomDef, outDir: string) {
     orientation: 'orthogonal',
     renderorder: 'right-down',
     infinite: false,
-    width: ROOM_W,
-    height: ROOM_H,
+    width: CHUNK_W,
+    height: CHUNK_H,
     tilewidth: TILE,
     tileheight: TILE,
     nextlayerid: 3,
-    nextobjectid: nextObjectId,
+    nextobjectid: nextId,
     properties: [
       { name: 'kind', type: 'string', value: def.kind },
-      { name: 'exits', type: 'string', value: def.exits },
+      { name: 'difficulty', type: 'int', value: def.difficulty },
     ],
     tilesets: [
       {
@@ -99,7 +85,7 @@ function toTiledJson(def: RoomDef, outDir: string) {
       },
     ],
     layers: [
-      { id: 1, name: 'terrain', type: 'tilelayer', x: 0, y: 0, width: ROOM_W, height: ROOM_H, opacity: 1, visible: true, data },
+      { id: 1, name: 'terrain', type: 'tilelayer', x: 0, y: 0, width: CHUNK_W, height: CHUNK_H, opacity: 1, visible: true, data },
       { id: 2, name: 'spawns', type: 'objectgroup', x: 0, y: 0, opacity: 1, visible: true, draworder: 'topdown', objects },
     ],
   };
@@ -152,11 +138,11 @@ function writePlaceholderTileset(path: string) {
   writeFileSync(path, png);
 }
 
-const biomes: Record<string, RoomDef[]> = { bioma1 };
+const biomes: Record<string, ChunkDef[]> = { bioma1 };
 
 writePlaceholderTileset(tilesetImage);
 for (const [biome, defs] of Object.entries(biomes)) {
-  const outDir = join(root, 'src/data/rooms', biome);
+  const outDir = join(root, 'src/data/chunks', biome);
   mkdirSync(outDir, { recursive: true });
   for (const def of defs) {
     const file = join(outDir, `${def.name}.json`);

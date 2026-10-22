@@ -1,8 +1,11 @@
 // Tipos compartidos por el generador, el validador y la escena (sin dependencias de Phaser)
 
 export const TILE_SIZE = 16;
-export const ROOM_W = 30;
-export const ROOM_H = 17;
+export const CHUNK_W = 30;
+export const CHUNK_H = 17;
+export const CHUNK_PX = CHUNK_W * TILE_SIZE;
+// Fila donde están los pies del jugador sobre el suelo en los bordes de cada chunk
+export const GROUND_ROW = 14;
 
 export const Tile = {
   Empty: 0,
@@ -19,20 +22,15 @@ export interface Spawn extends Point {
   type: string;
 }
 
-// Coordenadas en tiles. start/exit son la celda donde están los pies (la de abajo del cuerpo).
-export interface Level {
-  seed: string;
+export interface Grid {
   width: number;
   height: number;
   tiles: Uint8Array;
-  start: Point;
-  exit: Point;
-  spawns: Spawn[];
-  layout: string[][];
-  attempts: number;
 }
 
-export function tileAt(level: Pick<Level, 'width' | 'height' | 'tiles'>, x: number, y: number): number {
-  if (x < 0 || y < 0 || x >= level.width || y >= level.height) return Tile.Solid;
-  return level.tiles[y * level.width + x];
+// Fuera del mapa: por debajo es vacío (caer = morir); por arriba y a los lados, pared
+export function tileAt(grid: Grid, x: number, y: number): number {
+  if (y >= grid.height) return Tile.Empty;
+  if (x < 0 || y < 0 || x >= grid.width) return Tile.Solid;
+  return grid.tiles[y * grid.width + x];
 }
