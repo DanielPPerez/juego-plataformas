@@ -33,12 +33,17 @@ export function normalChunkCount(levelIndex: number): number {
 
 // Decide la secuencia de chunks del nivel encadenando alturas: la entrada de cada chunk es la salida del anterior.
 // Solo elige plantillas; el contenido se genera cuando hace falta (buildChunk).
-export function planLevel(seed: string, levelIndex: number, templates: ChunkTemplate[]): LevelPlan {
+export function planLevel(
+  seed: string,
+  levelIndex: number,
+  templates: ChunkTemplate[],
+  count = normalChunkCount(levelIndex),
+): LevelPlan {
   const rng = new RNG(`${seed}:plan`);
   const of = (kind: string) => templates.filter((t) => t.kind === kind);
   const chunks = [rng.pick(of('start'))];
 
-  for (let i = 0; i < normalChunkCount(levelIndex); i++) {
+  for (let i = 0; i < count; i++) {
     const height = chunks[chunks.length - 1].exit;
     const maxDifficulty = i < EASY_CHUNKS ? 1 : 3;
     const recent = chunks.slice(-NO_REPEAT).map((c) => c.base);

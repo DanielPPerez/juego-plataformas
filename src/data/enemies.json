@@ -12,6 +12,19 @@
     "jumpGaps": false,
     "jumpVelocity": 0
   },
+  "larva": {
+    "biome": 0,
+    "texture": "larva",
+    "count": 1,
+    "hp": 1,
+    "damage": 1,
+    "speed": 60,
+    "chaseSpeed": 60,
+    "sight": 480,
+    "turnAtLedges": false,
+    "jumpGaps": true,
+    "jumpVelocity": 220
+  },
   "rat": {
     "biome": 1,
     "texture": "rat",

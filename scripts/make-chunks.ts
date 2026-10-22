@@ -6,6 +6,7 @@ import { deflateSync } from 'node:zlib';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chunks as bioma1, type ChunkDef } from './chunks/bioma1.ts';
+import { chunks as chase1 } from './chunks/chase1.ts';
 
 const CHUNK_W = 30;
 const CHUNK_H = 17;
@@ -149,7 +150,7 @@ function writePlaceholderTileset(path: string) {
   writeFileSync(path, png);
 }
 
-const biomes: Record<string, ChunkDef[]> = { bioma1 };
+const biomes: Record<string, ChunkDef[]> = { bioma1, chase1 };
 
 writePlaceholderTileset(tilesetImage);
 for (const [biome, defs] of Object.entries(biomes)) {

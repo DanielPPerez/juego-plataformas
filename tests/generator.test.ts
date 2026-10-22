@@ -43,6 +43,12 @@ describe('ChunkGenerator (bioma1)', () => {
     }
   });
 
+  // GDD 6.1: con scroll forzado, todo chunk de persecución debe cruzarse con salto simple
+  const singleJump = abilityFromConfig({ ...playerDefaults, airJumps: 0, dashSpeed: 0 });
+  it.each(getChunks('chase1').map((t) => [t.name, t] as const))('persecución: %s se cruza solo saltando', (_, t) => {
+    expect(isChunkCrossable(resolveChunk(t, 0, new RNG('x'), false), singleJump)).toBe(true);
+  });
+
   it(`${SEEDS} niveles completos se pueden terminar`, () => {
     for (let i = 0; i < SEEDS; i++) {
       const plan = planLevel(`seed-${i}`, 1 + (i % 3), templates);

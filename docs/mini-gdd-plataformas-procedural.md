@@ -102,7 +102,7 @@ En lo visual, Lovecraft la describe como un conglomerado de **esferas iridiscent
 | 2 | Costa / puerto podrido | **La Puerta**                  | Arco de piedra viviente montado sobre un barco-ruina que huye por el mar; de su umbral salen Profundos.           | 1) Abre el portal y salen 2–3 enemigos · 2) Lluvia de proyectiles en arco · 3) Ola que inunda la parte baja de la pantalla | 2     | **B** — huye por la derecha            |
 | 3 | Ciudadela / cielo roto | **El Guardián (Yog-Sothoth)** | Conglomerado de esferas que absorbe a La Llave y La Puerta.                                                       | Fase 1: patrones de La Llave · Fase 2: patrones de La Puerta · Fase 3: combina ambos + rayo de esfera barriendo la pantalla | 3     | **A → B → A** (alterna por fase)      |
 
-- Implementación: **máquina de estados** (Idle → Telegraph → Attack → Recover) con patrones elegidos por peso
+- Implementación: **máquina de estados** (Idle → Telegraph → Attack → Recover) con patrones elegidos por peso (datos en `bosses.json`). La persecución es un modo de `GameScene` (`?boss` en la URL para probarla): cámara con scroll forzado, jugador encerrado en la vista, tocar al jefe = daño + expulsión.
 - Cada ataque tiene **telegraph visible** (≥0.5 s: brillo, sonido o marca en el suelo)
 - La fase cambia al 50% de vida (y al 25% en el jefe final)
 - **Jefes por partes:** se construyen como `Container` de Phaser (cuerpo + tentáculos/partes animadas por separado con tweens). Es mucho más barato que animarlos frame a frame y se ve como Metal Slug.
@@ -190,7 +190,7 @@ src/
   entities/
     player/              # Player (base), Knight, Mage
     enemies/             # Enemy (terrestre, configurado por datos); Flyer y Shooter llegarán con los biomas 2–3
-    bosses/              # Boss (base + state machine), KeyBoss, GateBoss, GuardianBoss
+    bosses/              # KeyBoss (máquina de estados propia); la base común se extrae al llegar GateBoss
   systems/
     ChunkGenerator.ts    # secuencia de chunks + contenido on-the-fly (sin Phaser, testeable)
     ChunkStreamer.ts     # carga/descarga chunks alrededor del jugador (niveles y persecución)
@@ -200,7 +200,7 @@ src/
     SaveData.ts
   data/
     chunks/<bioma>/*.json  # Tiled (chunks de nivel)
-    chase/*.json         # Tiled (chunks de persecución)
+    chunks/chase1/*.json   # Tiled (chunks de persecución; test: se cruzan solo saltando)
     enemies.json, upgrades.json, bosses.json
   utils/
 ```

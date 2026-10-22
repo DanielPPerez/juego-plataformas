@@ -1,13 +1,14 @@
 import Phaser from 'phaser';
 import enemyStats from '../data/enemies.json';
 import playerDefaults from '../data/player.json';
+import { KeyBoss } from '../entities/bosses/KeyBoss';
 import { Enemy } from '../entities/enemies/Enemy';
 import { Knight } from '../entities/player/Knight';
 import { planLevel, type ChunkInstance, type LevelPlan } from '../systems/ChunkGenerator';
 import { ChunkStreamer } from '../systems/ChunkStreamer';
 import { getChunks } from '../systems/chunkLibrary';
 import { Input } from '../systems/Input';
-import { ZOOM } from '../config';
+import { VIEW_W, ZOOM } from '../config';
 import { CHUNK_H, CHUNK_PX, CHUNK_W, TILE_SIZE } from '../systems/level';
 import { abilityFromConfig } from '../systems/LevelValidator';
 import { loadPlayerConfig } from '../systems/PlayerConfig';
@@ -19,12 +20,17 @@ const BIOME = 1;
 const BIOME_ENEMIES = Object.values(enemyStats).filter((e) => e.biome === BIOME);
 const HITSTOP_MS = 50;
 const ENEMY_GRAVITY = 1000;
+// Persecución: chunks de sobra (el jefe muere mucho antes) y suelo de los chunks de persecución
+const CHASE_CHUNKS = 200;
+const CHASE_GROUND_Y = 15 * TILE_SIZE;
 
 interface GameSceneData {
   runSeed?: string;
   levelIndex?: number;
   coins?: number;
   hp?: number;
+  // Persecución del jefe del bioma (tras el 2.º nivel)
+  boss?: boolean;
 }
 
 function randomSeed(): string {
@@ -50,6 +56,10 @@ export class GameScene extends Phaser.Scene {
   private startHp?: number;
   private hitstopUntil = 0;
   private dead = false;
+  private chase = false;
+  private boss?: KeyBoss;
+  private cameraTarget?: Phaser.GameObjects.Zone;
+  private slash!: Phaser.GameObjects.Rectangle;
   private solidLayer!: Phaser.Tilemaps.TilemapLayer;
   private platformLayer!: Phaser.Tilemaps.TilemapLayer;
 
@@ -64,12 +74,18 @@ export class GameScene extends Phaser.Scene {
     this.coins = data.coins ?? 0;
     this.startHp = data.hp;
     this.dead = false;
+    // ?boss en la URL va directo a la persecución (depuración)
+    this.chase = data.boss ?? new URLSearchParams(location.search).has('boss');
+    this.boss = undefined;
+    this.cameraTarget = undefined;
   }
 
   create() {
     // Validar con la config por defecto (no la del panel F1) para que una seed siempre dé el mismo nivel
     const ability = abilityFromConfig(playerDefaults);
-    this.plan = planLevel(`${this.runSeed}:${this.levelIndex}`, this.levelIndex, getChunks('bioma1'));
+    this.plan = this.chase
+      ? planLevel(`${this.runSeed}:${this.levelIndex}:chase`, 1, getChunks('chase1'), CHASE_CHUNKS)
+      : planLevel(`${this.runSeed}:${this.levelIndex}`, this.levelIndex, getChunks('bioma1'));
 
     const map = this.make.tilemap({
       width: this.plan.chunks.length * CHUNK_W,
@@ -115,7 +131,10 @@ export class GameScene extends Phaser.Scene {
       this.damagePlayer(enemy.stats.damage, enemy.x);
     });
 
-    this.cameras.main.setZoom(ZOOM).startFollow(this.player, true, 0.15, 0.15);
+    this.slash = this.add.rectangle(0, 0, 1, 1, 0xffffff, 0.5).setVisible(false).setDepth(6);
+    this.cameras.main.setZoom(ZOOM);
+    if (this.chase) this.startChase();
+    else this.cameras.main.startFollow(this.player, true, 0.15, 0.15);
     this.scene.launch('UI');
 
     this.panel = new TuningPanel(cfg);
@@ -138,7 +157,8 @@ export class GameScene extends Phaser.Scene {
       !this.solidLayer.getTileAtWorldXY(body.center.x, body.bottom + 1);
     this.controls.update();
     this.player.update(dt);
-    this.handleAttack(this.player.tryAttack(dt));
+    this.player.updateAttack(dt);
+    this.handleAttack();
 
     const fallLimit = CHUNK_H * TILE_SIZE + 32;
     for (const e of this.enemies.getChildren() as Enemy[]) {
@@ -146,12 +166,14 @@ export class GameScene extends Phaser.Scene {
       else e.update(dt, this.player);
     }
 
-    if (this.streamer.update(this.player.x)) this.updateBounds();
+    if (this.boss) this.updateChase(dt);
+    if (this.streamer.update(this.cameraTarget?.x ?? this.player.x)) this.updateBounds();
 
     const chunk = this.streamer.chunkAt(this.player.x);
-    // Caer a un hueco: perder un corazón y reaparecer al inicio del chunk actual
+    // Caer a un hueco: perder un corazón y reaparecer al inicio de un chunk (en la persecución, del siguiente visible)
     if (chunk && this.player.y > fallLimit) {
-      const pos = tileToWorld(1, chunk.entryRow, chunk.index * CHUNK_PX);
+      const respawn = this.boss ? this.streamer.chunkAt(Math.ceil((this.boss.right + 8) / CHUNK_PX) * CHUNK_PX) : chunk;
+      const pos = tileToWorld(1, (respawn ?? chunk).entryRow, (respawn ?? chunk).index * CHUNK_PX);
       this.player.setPosition(pos.x, pos.y);
       body.setVelocity(0, 0);
       this.damagePlayer(1, undefined, true);
@@ -162,21 +184,68 @@ export class GameScene extends Phaser.Scene {
       maxHp: playerDefaults.maxHp,
       status: `Seed ${this.runSeed}  Nivel ${this.levelIndex}  Monedas ${this.coins}`,
       debug: `Chunk ${chunk?.index ?? '-'}/${this.streamer.chunkCount - 1} ${chunk?.name ?? ''}`,
+      boss: this.boss && { name: this.boss.stats.name, hp: this.boss.hp, maxHp: this.boss.maxHp },
     };
     this.registry.set('hud', hud);
   }
 
-  private handleAttack(hitbox: Phaser.Geom.Rectangle | null) {
+  private startChase() {
+    const view = VIEW_W / 2;
+    this.cameraTarget = this.add.zone(view, (CHUNK_H * TILE_SIZE) / 2, 1, 1);
+    this.cameras.main.startFollow(this.cameraTarget, true, 1, 1);
+    this.boss = new KeyBoss(this, this.plan.seed, {
+      camera: this.cameras.main,
+      groundY: CHASE_GROUND_Y,
+      playerX: () => this.player.x,
+      spawnLarva: (x, y) => this.enemies.add(new Enemy(this, x, y, enemyStats.larva, this.groundAt)),
+      onDefeated: () =>
+        this.scene.restart({
+          runSeed: this.runSeed,
+          levelIndex: this.levelIndex + 1,
+          coins: this.coins,
+          hp: this.player.hp,
+          boss: false,
+        }),
+    });
+  }
+
+  // Scroll forzado: la cámara avanza sola y el jugador queda encerrado en la vista
+  private updateChase(dt: number) {
+    const boss = this.boss!;
+    this.cameraTarget!.x += (boss.scrollSpeed * dt) / 1000;
+    boss.update(dt);
+    const view = this.cameras.main.worldView;
+    this.physics.world.setBounds(view.x, 0, view.width, CHUNK_H * TILE_SIZE + 64);
+
+    const spike = boss.tentacleHitbox;
+    if (spike && Phaser.Geom.Intersects.RectangleToRectangle(spike, this.player.getBounds())) {
+      this.damagePlayer(boss.stats.tentacleDamage, spike.centerX);
+    }
+    // Tocar al jefe: daño y se expulsa al jugador hacia la derecha
+    if (!boss.dead && this.player.body.left < boss.right) {
+      this.damagePlayer(boss.stats.contactDamage, boss.right - 100);
+      this.player.x = boss.right + this.player.body.halfWidth + 1;
+    }
+  }
+
+  // El golpe está activo varios frames y sigue al jugador; cada objetivo recibe un impacto por golpe
+  private handleAttack() {
+    const hitbox = this.player.attackHitbox;
+    this.slash.setVisible(!!hitbox);
     if (!hitbox) return;
-    const slash = this.add.rectangle(hitbox.centerX, hitbox.centerY, hitbox.width, hitbox.height, 0xffffff, 0.6);
-    this.time.delayedCall(80, () => slash.destroy());
+    this.slash.setPosition(hitbox.centerX, hitbox.centerY).setSize(hitbox.width, hitbox.height);
 
     let hit = false;
     for (const e of this.enemies.getChildren() as Enemy[]) {
-      if (Phaser.Geom.Intersects.RectangleToRectangle(hitbox, e.getBounds())) {
+      if (Phaser.Geom.Intersects.RectangleToRectangle(hitbox, e.getBounds()) && this.player.canHit(e)) {
         e.hurt(this.player.attackDamage, this.player.x);
         hit = true;
       }
+    }
+    const boss = this.boss;
+    if (boss && !boss.dead && Phaser.Geom.Intersects.RectangleToRectangle(hitbox, boss.hurtbox) && this.player.canHit(boss)) {
+      boss.hurt(this.player.attackDamage);
+      hit = true;
     }
     if (hit) {
       this.hitstop();
@@ -221,7 +290,7 @@ export class GameScene extends Phaser.Scene {
   private spawnChunkObjects(chunk: ChunkInstance, offsetX: number): Phaser.GameObjects.GameObject[] {
     const objects: Phaser.GameObjects.GameObject[] = [];
     const rng = new RNG(`${this.plan.seed}:${chunk.index}:enemies`);
-    if (chunk.exit) {
+    if (chunk.exit && !this.chase) {
       const p = tileToWorld(chunk.exit.x, chunk.exit.y, offsetX);
       const exit = this.physics.add.staticImage(p.x, p.y, 'exit');
       this.physics.add.overlap(this.player, exit, () => this.nextLevel());
@@ -244,12 +313,15 @@ export class GameScene extends Phaser.Scene {
     return objects;
   }
 
+  // Cada bioma = 2 niveles + persecución del jefe
   private nextLevel() {
+    const toBoss = this.levelIndex % 2 === 0;
     this.scene.restart({
       runSeed: this.runSeed,
-      levelIndex: this.levelIndex + 1,
+      levelIndex: toBoss ? this.levelIndex : this.levelIndex + 1,
       coins: this.coins,
       hp: this.player.hp,
+      boss: toBoss,
     });
   }
 }

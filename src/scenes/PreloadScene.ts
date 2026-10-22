@@ -56,6 +56,11 @@ export class PreloadScene extends Phaser.Scene {
       g.fillStyle(0x5a5a60).fillRect(0, 5, 3, 1);
       g.fillStyle(0xff4040).fillRect(10, 3, 1, 1);
     });
+    // Larva de La Llave 10×6
+    make('larva', 10, 6, () => {
+      g.fillStyle(0x8ab04a).fillRect(0, 1, 10, 5);
+      g.fillStyle(0x4a6a20).fillRect(2, 1, 1, 5).fillRect(5, 1, 1, 5);
+    });
     // Corazones de la UI (7×6)
     const heart = (color: number) => () => {
       g.fillStyle(color).fillRect(1, 0, 2, 1).fillRect(4, 0, 2, 1).fillRect(0, 1, 7, 2).fillRect(1, 3, 5, 1);

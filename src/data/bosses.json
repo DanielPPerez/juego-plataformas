@@ -1,1 +1,29 @@
-[]
+{
+  "key": {
+    "name": "La Llave",
+    "hp": 30,
+    "contactDamage": 1,
+    "tentacleDamage": 1,
+    "recoverMs": 500,
+    "tentacleMs": 450,
+    "chargeMs": 1200,
+    "chargeSpeed": 130,
+    "phaseAt": 0.5,
+    "phases": [
+      {
+        "scrollSpeed": 45,
+        "idleMs": 900,
+        "telegraphMs": 700,
+        "larvae": 2,
+        "patterns": { "tentacle": 3, "larvae": 2, "charge": 1 }
+      },
+      {
+        "scrollSpeed": 60,
+        "idleMs": 550,
+        "telegraphMs": 550,
+        "larvae": 3,
+        "patterns": { "tentacle": 3, "larvae": 2, "charge": 2 }
+      }
+    ]
+  }
+}
