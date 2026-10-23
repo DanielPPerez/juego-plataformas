@@ -3,8 +3,8 @@ import upgrades from '../src/data/upgrades.json';
 import type { RunState } from '../src/systems/Run';
 import { applyUpgrade, damageMultiplier, rollUpgrades } from '../src/systems/Upgrades';
 
-const run = (ids: string[] = []): RunState => ({
-  seed: 's', levelIndex: 1, coins: 0, hp: 5, maxHp: 5, upgrades: ids, shield: 0,
+const run = (ids: string[] = [], character: RunState['character'] = 'knight'): RunState => ({
+  seed: 's', character, levelIndex: 1, coins: 0, hp: 5, maxHp: 5, upgrades: ids, shield: 0,
 });
 const byId = (id: string) => upgrades.find((u) => u.id === id)!;
 
@@ -19,6 +19,12 @@ describe('Upgrades', () => {
     const owned = upgrades.filter((u) => !u.stackable).map((u) => u.id);
     for (let i = 0; i < 50; i++) {
       rollUpgrades(run(owned), `s${i}`).forEach((u) => expect(u.stackable).toBe(true));
+    }
+  });
+
+  it('el Caballero nunca recibe mejoras del Mago', () => {
+    for (let i = 0; i < 100; i++) {
+      rollUpgrades(run(), `k${i}`).forEach((u) => expect(u.id).not.toBe('arcane_seal'));
     }
   });
 

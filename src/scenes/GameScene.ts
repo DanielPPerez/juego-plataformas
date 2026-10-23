@@ -4,17 +4,18 @@ import playerDefaults from '../data/player.json';
 import { KeyBoss } from '../entities/bosses/KeyBoss';
 import { Enemy } from '../entities/enemies/Enemy';
 import { Knight } from '../entities/player/Knight';
+import { Mage } from '../entities/player/Mage';
 import { planLevel, type ChunkInstance, type LevelPlan } from '../systems/ChunkGenerator';
 import { ChunkStreamer } from '../systems/ChunkStreamer';
 import { getChunks } from '../systems/chunkLibrary';
 import { Input } from '../systems/Input';
 import { VIEW_W, ZOOM } from '../config';
-import { CHUNK_H, CHUNK_PX, CHUNK_W, TILE_SIZE } from '../systems/level';
+import { CHUNK_H, CHUNK_PX, CHUNK_W, Tile, TILE_SIZE } from '../systems/level';
 import { abilityFromConfig } from '../systems/LevelValidator';
 import { loadPlayerConfig } from '../systems/PlayerConfig';
 import { RNG } from '../systems/RNG';
 import { getRun, isDevMode, stacks, urlParam, type RunState } from '../systems/Run';
-import { damageMultiplier, rollUpgrades } from '../systems/Upgrades';
+import { damageMultiplier, rollUpgrades, specialCooldownMs } from '../systems/Upgrades';
 import { TuningPanel } from '../utils/TuningPanel';
 import type { Hud } from './UIScene';
 
@@ -25,6 +26,11 @@ const ENEMY_GRAVITY = 1000;
 const CHEST_COINS = 10;
 const MAGNET_RADIUS = 56;
 const EVASION_CHANCE = 0.15;
+const POGO_VELOCITY = 320;
+// Onda de corte del Caballero (mejora Proyectil extra)
+const WAVE = { speed: 240, lifeMs: 300 };
+// Separación angular entre proyectiles extra del Mago
+const SPREAD = 0.15;
 // Persecución: chunks de sobra (el jefe muere mucho antes) y suelo de los chunks de persecución
 const CHASE_CHUNKS = 200;
 const CHASE_GROUND_Y = 15 * TILE_SIZE;
@@ -41,7 +47,8 @@ function tileToWorld(x: number, y: number, offsetX = 0) {
 
 export class GameScene extends Phaser.Scene {
   private run!: RunState;
-  private player!: Knight;
+  private player!: Knight | Mage;
+  private projectiles!: Phaser.Physics.Arcade.Group;
   private controls!: Input;
   private panel!: TuningPanel;
   private plan!: LevelPlan;
@@ -102,9 +109,13 @@ export class GameScene extends Phaser.Scene {
     this.enemies = this.physics.add.group({ gravityY: ENEMY_GRAVITY, collideWorldBounds: true });
     this.controls = new Input(this);
     const cfg = loadPlayerConfig();
-    this.player = new Knight(this, 0, 0, this.controls, cfg);
+    this.player = run.character === 'mage'
+      ? new Mage(this, 0, 0, this.controls, cfg)
+      : new Knight(this, 0, 0, this.controls, cfg);
     this.player.hp = run.hp;
-    this.player.doubleAttack = stacks(run, 'double_attack') > 0;
+    this.applyPlayerUpgrades();
+    // Pool de proyectiles (rayos del Mago, ondas del Caballero): se reutilizan en vez de crearse
+    this.projectiles = this.physics.add.group({ allowGravity: false, maxSize: 60 });
     this.player.body.setCollideWorldBounds(true);
     this.physics.world.setBoundsCollision(true, true, true, false);
 
@@ -122,7 +133,13 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.solidLayer);
     this.physics.add.collider(this.player, this.platformLayer, undefined, () => !this.player.isDropping);
     this.physics.add.collider(this.enemies, this.solidLayer);
-    this.physics.add.collider(this.enemies, this.platformLayer);
+    this.physics.add.collider(this.enemies, this.platformLayer, undefined, (e) => !(e as Enemy).isDropping);
+    this.physics.add.collider(this.projectiles, this.solidLayer, (p) => this.killProjectile(p as Phaser.Physics.Arcade.Image));
+    this.physics.add.overlap(this.projectiles, this.enemies, (p, e) => {
+      const projectile = p as Phaser.Physics.Arcade.Image;
+      (e as Enemy).hurt(projectile.getData('damage'), projectile.x);
+      this.killProjectile(projectile);
+    });
     this.physics.add.overlap(this.player, this.coinGroup, (_p, coin) => this.collect(coin as Phaser.Physics.Arcade.Image));
     this.physics.add.overlap(this.player, this.enemies, (_p, e) => {
       const enemy = e as Enemy;
@@ -163,8 +180,13 @@ export class GameScene extends Phaser.Scene {
       !this.solidLayer.getTileAtWorldXY(body.center.x, body.bottom + 1);
     this.controls.update();
     this.player.update(dt);
-    this.player.updateAttack(dt);
-    this.handleAttack();
+    if (this.player instanceof Knight) {
+      this.player.updateAttack(dt);
+      this.handleAttack(this.player);
+    } else {
+      this.handleCast(this.player, dt);
+    }
+    this.updateProjectiles(dt);
     this.handleUpgradeEffects();
 
     const fallLimit = CHUNK_H * TILE_SIZE + 32;
@@ -196,9 +218,14 @@ export class GameScene extends Phaser.Scene {
     const hud: Hud = {
       hp: this.player.hp,
       maxHp: this.run.maxHp,
-      status: `Nivel ${this.run.levelIndex}  Monedas ${this.run.coins}${this.run.shield ? '  Escudo ' + this.run.shield : ''}`,
+      status: `Nivel ${this.run.levelIndex}  Monedas ${this.run.coins}${this.run.shield ? '  Escudo ' + this.run.shield : ''}${
+        this.player instanceof Mage ? `  Nova ${this.player.specialReadyInMs > 0 ? (this.player.specialReadyInMs / 1000).toFixed(1) + 's' : 'lista'}` : ''
+      }`,
       debug: `Seed ${this.run.seed}  Chunk ${chunk?.index ?? '-'}/${this.streamer.chunkCount - 1} ${chunk?.name ?? ''}${this.invincible ? '  INVENCIBLE' : ''}`,
       boss: this.boss && { name: this.boss.stats.name, hp: this.boss.hp, maxHp: this.boss.maxHp },
+      hint: this.player instanceof Mage
+        ? 'Clic disparar al cursor  Clic der. nova  Shift dash  S bajar  Esc pausa  F1 ajustes'
+        : 'Clic cortar  W+clic arriba  S+clic en el aire abajo (rebota)  Shift dash  S bajar  Esc pausa',
     };
     this.registry.set('hud', hud);
   }
@@ -210,7 +237,7 @@ export class GameScene extends Phaser.Scene {
       camera: this.cameras.main,
       groundY: CHASE_GROUND_Y,
       playerX: () => this.player.x,
-      spawnLarva: (x, y) => this.enemies.add(new Enemy(this, x, y, enemyStats.larva, this.groundAt)),
+      spawnLarva: (x, y) => this.enemies.add(new Enemy(this, x, y, enemyStats.larva, this.terrainAt)),
       // Solo existe el bioma 1: vencer a La Llave termina la demo
       onDefeated: () => this.endRun(true),
     });
@@ -235,33 +262,97 @@ export class GameScene extends Phaser.Scene {
     }
   }
 
-  private get attackDamage(): number {
-    return this.player.attackDamage * damageMultiplier(this.run, this.player.hp);
+  private get damageMult(): number {
+    return damageMultiplier(this.run, this.player.hp);
   }
 
   // El golpe está activo varios frames y sigue al jugador; cada objetivo recibe un impacto por golpe
-  private handleAttack() {
-    const hitbox = this.player.attackHitbox;
+  private handleAttack(knight: Knight) {
+    const damage = knight.attackDamage * this.damageMult;
+    if (knight.justSwung && knight.swingDir === 'side') {
+      for (let i = 0; i < stacks(this.run, 'extra_projectile'); i++) {
+        const angle = knight.facing > 0 ? 0 : Math.PI;
+        this.time.delayedCall(i * 80, () =>
+          this.fire(knight.body.center.x, knight.body.center.y, angle, WAVE.speed, WAVE.lifeMs, damage, 'wave'),
+        );
+      }
+    }
+
+    const hitbox = knight.attackHitbox;
     this.slash.setVisible(!!hitbox);
     if (!hitbox) return;
     this.slash.setPosition(hitbox.centerX, hitbox.centerY).setSize(hitbox.width, hitbox.height);
 
     let hit = false;
     for (const e of this.enemies.getChildren() as Enemy[]) {
-      if (Phaser.Geom.Intersects.RectangleToRectangle(hitbox, e.getBounds()) && this.player.canHit(e)) {
-        e.hurt(this.attackDamage, this.player.x);
+      if (Phaser.Geom.Intersects.RectangleToRectangle(hitbox, e.getBounds()) && knight.canHit(e)) {
+        e.hurt(damage, knight.x);
         hit = true;
       }
     }
     const boss = this.boss;
-    if (boss && !boss.dead && Phaser.Geom.Intersects.RectangleToRectangle(hitbox, boss.hurtbox) && this.player.canHit(boss)) {
-      boss.hurt(this.attackDamage);
+    if (boss && !boss.dead && Phaser.Geom.Intersects.RectangleToRectangle(hitbox, boss.hurtbox) && knight.canHit(boss)) {
+      boss.hurt(damage);
       hit = true;
     }
     if (hit) {
+      // Corte hacia abajo que acierta: rebote (pogo)
+      if (knight.swingDir === 'down') knight.pogo(POGO_VELOCITY);
       this.hitstop();
       this.cameras.main.shake(80, 0.004);
     }
+  }
+
+  // Mago: rayos hacia el cursor (+1 por cada Proyectil extra) y nova en círculo
+  private handleCast(mage: Mage, dt: number) {
+    const cast = mage.updateCast(dt, specialCooldownMs(this.run, mage.stats.specialCooldownMs));
+    if (!cast) return;
+    const { x, y } = mage.body.center;
+    const damage = mage.stats.boltDamage * this.damageMult;
+    const { boltSpeed, boltLifeMs } = mage.stats;
+    if (cast === 'shot') {
+      const aim = this.controls.aim(this.cameras.main);
+      mage.faceTowards(aim.x);
+      const base = Math.atan2(aim.y - y, aim.x - x);
+      const count = 1 + stacks(this.run, 'extra_projectile');
+      for (let i = 0; i < count; i++) {
+        this.fire(x, y, base + (i - (count - 1) / 2) * SPREAD, boltSpeed, boltLifeMs, damage, 'bolt');
+      }
+    } else {
+      const n = mage.stats.novaBolts;
+      for (let i = 0; i < n; i++) this.fire(x, y, (i / n) * Math.PI * 2, boltSpeed, boltLifeMs * 0.6, damage, 'bolt');
+      this.cameras.main.shake(100, 0.004);
+    }
+  }
+
+  private fire(x: number, y: number, angle: number, speed: number, lifeMs: number, damage: number, texture: string) {
+    const p = this.projectiles.get(x, y, texture) as Phaser.Physics.Arcade.Image | null;
+    if (!p) return;
+    p.setTexture(texture).enableBody(true, x, y, true, true).setRotation(angle).setDepth(6);
+    (p.body as Phaser.Physics.Arcade.Body).setAllowGravity(false);
+    this.physics.velocityFromRotation(angle, speed, p.body!.velocity as Phaser.Math.Vector2);
+    p.setData({ life: lifeMs, damage });
+  }
+
+  private killProjectile(p: Phaser.Physics.Arcade.Image) {
+    p.disableBody(true, true);
+  }
+
+  private updateProjectiles(dt: number) {
+    for (const p of this.projectiles.getChildren() as Phaser.Physics.Arcade.Image[]) {
+      if (!p.active) continue;
+      const life = (p.getData('life') as number) - dt;
+      p.setData('life', life);
+      if (life <= 0) this.killProjectile(p);
+      else if (this.boss && !this.boss.dead && this.boss.hurtbox.contains(p.x, p.y)) {
+        this.boss.hurt(p.getData('damage'));
+        this.killProjectile(p);
+      }
+    }
+  }
+
+  private applyPlayerUpgrades() {
+    if (this.player instanceof Knight) this.player.doubleAttack = stacks(this.run, 'double_attack') > 0;
   }
 
   // Dash sangriento e Imán
@@ -272,7 +363,7 @@ export class GameScene extends Phaser.Scene {
         for (const e of this.enemies.getChildren() as Enemy[]) {
           if (!this.dashHits.has(e) && Phaser.Geom.Intersects.RectangleToRectangle(this.player.getBounds(), e.getBounds())) {
             this.dashHits.add(e);
-            e.hurt(this.attackDamage, this.player.x);
+            e.hurt(this.player.attackDamage * this.damageMult, this.player.x);
           }
         }
       }
@@ -343,7 +434,7 @@ export class GameScene extends Phaser.Scene {
     this.scene.resume();
     // Aplicar mejoras que afectan al jugador ya creado
     this.player.hp = this.run.hp;
-    this.player.doubleAttack = stacks(this.run, 'double_attack') > 0;
+    this.applyPlayerUpgrades();
     if (this.pendingUpgrade === 'end') this.nextLevel();
   }
 
@@ -360,8 +451,8 @@ export class GameScene extends Phaser.Scene {
     this.cameras.main.setBounds(left, 0, width, height);
   }
 
-  private groundAt = (x: number, y: number) =>
-    !!this.solidLayer.getTileAtWorldXY(x, y) || !!this.platformLayer.getTileAtWorldXY(x, y);
+  private terrainAt = (x: number, y: number) =>
+    this.solidLayer.getTileAtWorldXY(x, y) ? Tile.Solid : this.platformLayer.getTileAtWorldXY(x, y) ? Tile.Platform : Tile.Empty;
 
   private spawnChunkObjects(chunk: ChunkInstance, offsetX: number): Phaser.GameObjects.GameObject[] {
     const objects: Phaser.GameObjects.GameObject[] = [];
@@ -380,7 +471,7 @@ export class GameScene extends Phaser.Scene {
       else if (s.type === 'enemy') {
         const stats = rng.pick(BIOME_ENEMIES);
         for (let i = 0; i < stats.count; i++) {
-          const enemy = new Enemy(this, x + i * 14, y, stats, this.groundAt);
+          const enemy = new Enemy(this, x + i * 14, y, stats, this.terrainAt);
           this.enemies.add(enemy);
           objects.push(enemy);
         }

@@ -47,10 +47,19 @@ export class Input {
     this.prevRightButton = right;
   }
 
+  // Posición del cursor en el mundo (para apuntar)
+  aim(camera: Phaser.Cameras.Scene2D.Camera): Phaser.Math.Vector2 {
+    return this.pointer.positionToCamera(camera) as Phaser.Math.Vector2;
+  }
+
   get axisX(): number {
     const l = this.keys.left.isDown || this.keys.a.isDown;
     const r = this.keys.right.isDown || this.keys.d.isDown;
     return (r ? 1 : 0) - (l ? 1 : 0);
+  }
+
+  get upHeld(): boolean {
+    return this.keys.up.isDown || this.keys.w.isDown;
   }
 
   get downHeld(): boolean {

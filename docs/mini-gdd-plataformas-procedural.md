@@ -58,7 +58,7 @@ Inicio de run → Explorar nivel procedural → Enemigos / recompensas
 - Movimiento: correr, saltar, salto variable, coyote time (~100 ms), jump buffer (~100 ms)
 - Extra: **dash** (con i-frames, 1 en el aire) + **doble salto** (decidido en la semana 1: sin él las plataformas altas quedaban fuera de alcance). Wall jump descartado.
 - Plataformas atravesables: se suben desde abajo; **Abajo (S/↓)** para bajar
-- Combate: Melee (Caballero) · Disparo (Mago)
+- Combate: **Caballero** melee con cortes en 3 direcciones (lateral, W+clic arriba, S+clic en el aire abajo con rebote/pogo). **Mago** dispara rayos al cursor y su habilidad (clic der.) es la **nova arcana**: 8 rayos en círculo, 4 s de espera. Proyectiles con object pooling. El Caballero aún no tiene habilidad especial.
 - Vida: 5 corazones · i-frames tras recibir daño
 - Controles: teclado (A/D o flechas para moverse, W/Espacio salto) + mouse (clic izq. ataque normal, clic der. habilidad). El aim del Mago sigue al cursor. Gamepad opcional en v1.1
 
@@ -114,7 +114,7 @@ Criaturas de los relatos originales de Lovecraft, adaptadas a lo medieval.
 
 | Nombre                                      | Bioma | Comportamiento                                                   | Reutiliza de      | Origen                                |
 | ------------------------------------------- | ----- | ---------------------------------------------------------------- | ----------------- | ------------------------------------- |
-| **Cultista**                          | 1     | Patrulla entre bordes; se gira al ver al jugador                 | —                | Cultos de varios relatos              |
+| **Cultista**                          | 1     | Patrulla; al ver al jugador lo persigue saltando a plataformas más altas y dejándose caer a las más bajas| —                | Cultos de varios relatos              |
 | **Rata del muro**                     | 1     | Enjambre de 3; corre en línea recta y salta huecos              | Patrulla          | *The Rats in the Walls*             |
 | **Profundo**                          | 2     | Patrulla y salta hacia el jugador si está cerca                 | Cultista          | *The Shadow over Innsmouth*         |
 | **Descarnado nocturno** (Night-gaunt) | 2     | Vuela, agarra al jugador y lo suelta desde arriba                | — (volador base) | *The Dream-Quest of Unknown Kadath* |

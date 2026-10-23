@@ -2,8 +2,11 @@ import type Phaser from 'phaser';
 import playerDefaults from '../data/player.json';
 
 // Estado de la run en curso. Vive en el registry de Phaser, así sobrevive a los reinicios de escena.
+export type Character = 'knight' | 'mage';
+
 export interface RunState {
   seed: string;
+  character: Character;
   levelIndex: number;
   coins: number;
   hp: number;
@@ -17,9 +20,10 @@ export function randomSeed(): string {
   return Math.random().toString(36).slice(2, 8);
 }
 
-export function newRun(scene: Phaser.Scene, seed = randomSeed(), levelIndex = 1): RunState {
+export function newRun(scene: Phaser.Scene, character: Character = 'knight', seed = randomSeed(), levelIndex = 1): RunState {
   const run: RunState = {
     seed,
+    character,
     levelIndex,
     coins: 0,
     hp: playerDefaults.maxHp,
@@ -32,7 +36,9 @@ export function newRun(scene: Phaser.Scene, seed = randomSeed(), levelIndex = 1)
 }
 
 export function getRun(scene: Phaser.Scene): RunState {
-  return (scene.registry.get('run') as RunState | undefined) ?? newRun(scene, urlParam('seed') ?? undefined);
+  // Sin run (entrada directa por URL de depuración): ?mage elige al Mago
+  const character = new URLSearchParams(location.search).has('mage') ? 'mage' : 'knight';
+  return (scene.registry.get('run') as RunState | undefined) ?? newRun(scene, character, urlParam('seed') ?? undefined);
 }
 
 export function stacks(run: RunState, upgrade: string): number {
@@ -43,9 +49,9 @@ export function urlParam(name: string): string | null {
   return new URLSearchParams(location.search).get(name);
 }
 
-// ?seed, ?chunk o ?boss en la URL: entrar directo al juego (depuración)
+// ?seed, ?chunk, ?boss o ?mage en la URL: entrar directo al juego (depuración)
 export function isDebugUrl(): boolean {
-  return ['seed', 'chunk', 'boss'].some((p) => new URLSearchParams(location.search).has(p));
+  return ['seed', 'chunk', 'boss', 'mage'].some((p) => new URLSearchParams(location.search).has(p));
 }
 
 // Herramientas de desarrollo (selector de tramos, F2/F3): en `npm run dev` o con ?dev

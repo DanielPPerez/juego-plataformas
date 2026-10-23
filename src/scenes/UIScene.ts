@@ -6,6 +6,7 @@ export interface Hud {
   maxHp: number;
   status: string;
   debug: string;
+  hint: string;
   boss?: { name: string; hp: number; maxHp: number };
 }
 
@@ -16,6 +17,7 @@ export class UIScene extends Phaser.Scene {
   private hearts: Phaser.GameObjects.Image[] = [];
   private status!: Phaser.GameObjects.Text;
   private debug!: Phaser.GameObjects.Text;
+  private hint!: Phaser.GameObjects.Text;
   private bossName!: Phaser.GameObjects.Text;
   private bossBar!: Phaser.GameObjects.Graphics;
 
@@ -28,10 +30,7 @@ export class UIScene extends Phaser.Scene {
     const style = { fontFamily: FONT, fontSize: '16px', color: '#ffffff' };
     this.status = this.add.text(12, 44, '', style);
     this.debug = this.add.text(12, 68, '', { ...style, color: '#9a9aaa' });
-    this.add.text(12, VIEW_H * ZOOM - 28, 'Clic ataque  Shift dash  S/Abajo bajar  Esc pausa  F1 ajustes', {
-      ...style,
-      color: '#6a6a7a',
-    });
+    this.hint = this.add.text(12, VIEW_H * ZOOM - 24, '', { ...style, fontSize: '12px', color: '#6a6a7a' });
     const cx = this.scale.width / 2;
     this.bossName = this.add.text(cx, 96, '', { ...style, color: '#d0a0ff' }).setOrigin(0.5, 0);
     this.bossBar = this.add.graphics();
@@ -46,6 +45,7 @@ export class UIScene extends Phaser.Scene {
     this.hearts.forEach((h, i) => h.setTexture(i < hud.hp ? 'heart' : 'heart-empty').setVisible(i < hud.maxHp));
     if (this.status.text !== hud.status) this.status.setText(hud.status);
     if (this.debug.text !== hud.debug) this.debug.setText(hud.debug);
+    if (this.hint.text !== hud.hint) this.hint.setText(hud.hint);
 
     this.bossName.setText(hud.boss?.name ?? '');
     this.bossBar.clear();

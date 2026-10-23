@@ -7,5 +7,7 @@
   { "id": "shield", "name": "Escudo", "desc": "Bloquea 1 golpe por nivel", "stackable": true },
   { "id": "evasion", "name": "Evasión", "desc": "15 % de esquivar un golpe", "stackable": true },
   { "id": "luck", "name": "Suerte", "desc": "Monedas ×2", "stackable": false },
-  { "id": "cursed_blood", "name": "Sangre maldita", "desc": "+50 % de daño con 1 corazón", "stackable": false }
+  { "id": "cursed_blood", "name": "Sangre maldita", "desc": "+50 % de daño con 1 corazón", "stackable": false },
+  { "id": "extra_projectile", "name": "Proyectil extra", "desc": "Mago: +1 proyectil. Caballero: el corte lateral lanza una onda", "stackable": true },
+  { "id": "arcane_seal", "name": "Sello arcano", "desc": "-25 % de espera de la nova", "stackable": true, "character": "mage" }
 ]

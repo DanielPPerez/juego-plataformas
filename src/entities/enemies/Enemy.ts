@@ -1,27 +1,34 @@
 import Phaser from 'phaser';
 import enemies from '../../data/enemies.json';
+import { Tile } from '../../systems/level';
 
 export type EnemyStats = (typeof enemies)[keyof typeof enemies];
 
 const STUN_MS = 200;
+const JUMP_COOLDOWN_MS = 700;
+const DROP_MS = 250;
+// Distancia horizontal máxima para intentar saltar hacia un jugador que está más arriba
+const CLIMB_RANGE = 72;
 
-// Enemigo terrestre que patrulla (gravedad y límites los pone el grupo de GameScene).
-// El comportamiento sale de los datos (enemies.json):
-// sight > 0 → persigue al jugador si lo ve; si no salta, se gira en los bordes;
-// jumps → salta huecos y muros (en el aire va a airSpeed).
+// Enemigo terrestre (gravedad y límites los pone el grupo de GameScene). Comportamiento según enemies.json:
+// sight/sightY → distancia a la que ve al jugador y lo persigue; jumps → salta huecos y muros;
+// climbs → al perseguir, salta hacia arriba si el jugador está más alto y se deja caer si está más bajo.
+// Sin jumps ni climbs se gira en muros y bordes. En el aire va a airSpeed.
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
   declare body: Phaser.Physics.Arcade.Body;
 
   hp: number;
   private dir: 1 | -1 = -1;
   private stunTimer = 0;
+  private jumpTimer = 0;
+  private dropTimer = 0;
 
   constructor(
     scene: Phaser.Scene,
     x: number,
     y: number,
     readonly stats: EnemyStats,
-    private groundAt: (x: number, y: number) => boolean,
+    private terrainAt: (x: number, y: number) => number,
   ) {
     super(scene, x, y, stats.texture);
     this.hp = stats.hp;
@@ -30,7 +37,14 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (scene.anims.exists(`${stats.texture}-walk`)) this.play(`${stats.texture}-walk`);
   }
 
-  update(dtMs: number, target: Phaser.GameObjects.Components.Transform) {
+  // Mientras es true, la escena ignora su colisión con plataformas atravesables
+  get isDropping(): boolean {
+    return this.dropTimer > 0;
+  }
+
+  update(dtMs: number, target: Phaser.Physics.Arcade.Sprite) {
+    this.jumpTimer -= dtMs;
+    this.dropTimer -= dtMs;
     if (this.stunTimer > 0) {
       this.stunTimer -= dtMs;
       return;
@@ -38,18 +52,24 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     const s = this.stats;
     const b = this.body;
     const dx = target.x - this.x;
-    const sees = s.sight > 0 && Math.abs(dx) < s.sight && Math.abs(target.y - this.y) < 32;
-    if (sees) this.dir = dx > 0 ? 1 : -1;
+    // Diferencia de altura entre los pies (positivo = el jugador está más abajo)
+    const dy = (target.body as Phaser.Physics.Arcade.Body).bottom - b.bottom;
+    const sees = s.sight > 0 && Math.abs(dx) < s.sight && Math.abs(dy) < s.sightY;
+    if (sees && Math.abs(dx) > 4) this.dir = dx > 0 ? 1 : -1;
 
     const onFloor = b.blocked.down;
     const wallAhead = (this.dir < 0 && b.blocked.left) || (this.dir > 0 && b.blocked.right);
-    const ledgeAhead = onFloor && !this.groundAt(this.x + this.dir * (b.halfWidth + 2), b.bottom + 2);
+    const ledgeAhead = onFloor && this.terrainAt(this.x + this.dir * (b.halfWidth + 2), b.bottom + 2) === Tile.Empty;
     let speed = !onFloor ? s.airSpeed : sees ? s.chaseSpeed : s.speed;
 
-    // Muro o hueco delante: saltarlo (si sabe) o darse la vuelta / esperar en el borde
-    if ((wallAhead || ledgeAhead) && onFloor && s.jumps) {
-      b.setVelocityY(-s.jumpVelocity);
-      speed = s.airSpeed;
+    if (onFloor && s.climbs && sees) {
+      const onPlatform = this.terrainAt(b.center.x, b.bottom + 2) === Tile.Platform;
+      if ((dy < -8 && Math.abs(dx) < CLIMB_RANGE) || wallAhead) this.jump();
+      else if (dy > 8 && onPlatform) this.dropTimer = DROP_MS;
+      // Si el jugador está más abajo se deja caer por el borde; si no, espera en él
+      else if (ledgeAhead && dy <= 8) speed = 0;
+    } else if (onFloor && (wallAhead || ledgeAhead) && s.jumps) {
+      this.jump();
     } else if (wallAhead && !sees) {
       this.dir *= -1;
     } else if (ledgeAhead) {
@@ -57,7 +77,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       else this.dir *= -1;
     }
 
-    b.setVelocityX(this.dir * speed);
+    b.setVelocityX(this.dir * (b.velocity.y < 0 ? s.airSpeed : speed));
     this.setFlipX(this.dir < 0);
   }
 
@@ -70,5 +90,11 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     this.scene.time.delayedCall(60, () => this.active && this.clearTint());
     if (this.hp <= 0) this.destroy();
     return this.hp <= 0;
+  }
+
+  private jump() {
+    if (this.jumpTimer > 0) return;
+    this.jumpTimer = JUMP_COOLDOWN_MS;
+    this.body.setVelocityY(-this.stats.jumpVelocity);
   }
 }

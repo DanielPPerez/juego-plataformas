@@ -7,10 +7,12 @@
     "damage": 1,
     "speed": 35,
     "chaseSpeed": 75,
-    "airSpeed": 75,
+    "airSpeed": 85,
     "sight": 140,
     "jumps": false,
-    "jumpVelocity": 0
+    "jumpVelocity": 430,
+    "sightY": 130,
+    "climbs": true
   },
   "larva": {
     "biome": 0,
@@ -23,7 +25,9 @@
     "airSpeed": 120,
     "sight": 480,
     "jumps": true,
-    "jumpVelocity": 330
+    "jumpVelocity": 330,
+    "sightY": 200,
+    "climbs": false
   },
   "rat": {
     "biome": 1,
@@ -36,6 +40,8 @@
     "airSpeed": 120,
     "sight": 0,
     "jumps": true,
-    "jumpVelocity": 300
+    "jumpVelocity": 300,
+    "sightY": 0,
+    "climbs": false
   }
 }

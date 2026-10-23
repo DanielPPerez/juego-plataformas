@@ -1,0 +1,8 @@
+{
+  "attackCooldownMs": 350,
+  "boltSpeed": 320,
+  "boltLifeMs": 700,
+  "boltDamage": 1,
+  "specialCooldownMs": 4000,
+  "novaBolts": 8
+}

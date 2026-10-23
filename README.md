@@ -11,15 +11,18 @@ Phaser 3 + TypeScript + Vite. Diseño en [docs/mini-gdd-plataformas-procedural.m
 
 ## Controles
 
-A/D o flechas: moverse · W/Espacio: saltar (doble salto en el aire) · Clic izquierdo: atacar · Shift: dash · S o Abajo: bajar de una plataforma · Esc: pausa · F1: panel de ajuste
+A/D o flechas: moverse · W/Espacio: saltar (doble salto en el aire) · Shift: dash · S o Abajo: bajar de una plataforma · Esc: pausa · F1: panel de ajuste
+
+- **Caballero:** clic = corte lateral · W/↑ + clic = corte hacia arriba · S/↓ + clic en el aire = corte hacia abajo (rebota al acertar)
+- **Mago:** clic = rayo hacia el cursor · clic derecho = nova arcana
 
 ## Herramientas de desarrollo
 
 Con `npm run dev` (o `?dev` en la URL):
 
-- El menú tiene un selector para ir directo al Nivel 1, al Nivel 2 o al jefe (La Llave).
+- El menú tiene un selector para ir directo al Nivel 1, al Nivel 2 o al jefe (La Llave), con el personaje que elijas.
 - En juego: **F2** salta el tramo actual (termina el nivel o mata al jefe) y **F3** activa o desactiva la invencibilidad.
-- URL: `?seed=abc` repite una run, `?chunk=N` empieza en el chunk N y `?boss` va directo a la persecución.
+- URL: `?seed=abc` repite una run, `?chunk=N` empieza en el chunk N, `?boss` va directo a la persecución y `?mage` juega con el Mago.
 
 ## Arte
 

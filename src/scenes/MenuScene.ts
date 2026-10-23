@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
 import { TITLE } from '../config';
-import { isDevMode, newRun } from '../systems/Run';
+import { isDevMode, newRun, type Character } from '../systems/Run';
 import { loadRecord } from '../systems/SaveData';
 import { button, text } from '../utils/ui';
 
@@ -24,9 +24,14 @@ export class MenuScene extends Phaser.Scene {
 
     // Selector de tramos para probar y grabar sin jugar desde el principio
     if (isDevMode()) {
-      text(this, cx, 560, 'Desarrollo: ir a', 16, '#6a6a7a');
+      text(this, cx, 540, 'Desarrollo: ir a', 16, '#6a6a7a');
+      let character: Character = 'knight';
+      const toggle = button(this, cx, 575, 'Personaje: Caballero', () => {
+        character = character === 'knight' ? 'mage' : 'knight';
+        toggle.setText(`Personaje: ${character === 'knight' ? 'Caballero' : 'Mago'}`);
+      }, 14);
       const jump = (levelIndex: number, boss: boolean) => () => {
-        newRun(this, undefined, levelIndex);
+        newRun(this, character, undefined, levelIndex);
         this.scene.start('Game', { boss });
       };
       button(this, cx - 320, 610, 'Nivel 1', jump(1, false), 16);

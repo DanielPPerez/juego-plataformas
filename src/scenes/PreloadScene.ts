@@ -60,6 +60,16 @@ export class PreloadScene extends Phaser.Scene {
       g.fillStyle(0x1a1020).fillRect(14, 8, 8, 4);
     });
 
+    // Mago 24×32: túnica azul con sombrero
+    make('mage', 24, 32, () => {
+      g.fillStyle(0x3a5ab0).fillRect(3, 8, 18, 24);
+      g.fillStyle(0x2a3a80).fillRect(5, 0, 14, 9);
+      g.fillStyle(0xd0e0ff).fillRect(14, 11, 6, 3);
+    });
+    // Proyectiles: rayo del Mago 8×8 y onda de corte del Caballero 10×16
+    make('bolt', 8, 8, () => g.fillStyle(0x80c0ff).fillCircle(4, 4, 4).fillStyle(0xffffff).fillCircle(4, 4, 2));
+    make('wave', 10, 16, () => g.fillStyle(0xffffff, 0.8).fillRect(4, 0, 3, 16).fillRect(1, 3, 3, 10));
+
     // Tileset: 0 = sólido, 1 = plataforma atravesable
     make('tiles', 32, 16, () => {
       g.fillStyle(0x4a3b5c).fillRect(0, 0, 16, 16);

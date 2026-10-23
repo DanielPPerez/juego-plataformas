@@ -1,9 +1,13 @@
 import Phaser from 'phaser';
 import { ZOOM } from '../config';
-import { newRun } from '../systems/Run';
+import { newRun, type Character } from '../systems/Run';
 import { button, text } from '../utils/ui';
 
-// El Mago está en la lista de corte del GDD: se muestra bloqueado hasta que exista
+const CHARACTERS: { id: Character; name: string; desc: string; key: string }[] = [
+  { id: 'knight', name: 'Caballero', desc: 'Melee · cortes en 3 direcciones', key: 'ONE' },
+  { id: 'mage', name: 'Mago', desc: 'Dispara al cursor · nova arcana', key: 'TWO' },
+];
+
 export class CharacterSelectScene extends Phaser.Scene {
   constructor() {
     super('CharacterSelect');
@@ -11,24 +15,21 @@ export class CharacterSelectScene extends Phaser.Scene {
 
   create() {
     const cx = this.scale.width / 2;
-    text(this, cx, 120, 'Elige personaje', 32);
+    text(this, cx, 120, 'Elige personaje (clic o 1-2)', 32);
 
-    const start = () => {
-      newRun(this);
-      this.scene.start('Game');
-    };
-
-    this.add.image(cx - 220, 330, 'knight').setScale(ZOOM * 2);
-    button(this, cx - 220, 470, 'Caballero', start, 24);
-    text(this, cx - 220, 510, 'Melee · dash · doble salto', 12, '#8a7a9a');
-
-    this.add.rectangle(cx + 220, 330, 24 * ZOOM * 2, 32 * ZOOM * 2, 0x2a2a3a);
-    text(this, cx + 220, 330, '?', 48, '#4a4a5a');
-    text(this, cx + 220, 470, 'Mago', 24, '#4a4a5a');
-    text(this, cx + 220, 510, 'Próximamente', 12, '#4a4a5a');
+    CHARACTERS.forEach((c, i) => {
+      const x = cx + (i === 0 ? -220 : 220);
+      const start = () => {
+        newRun(this, c.id);
+        this.scene.start('Game');
+      };
+      this.add.image(x, 330, c.id).setScale(ZOOM * 2);
+      button(this, x, 470, c.name, start, 24);
+      text(this, x, 510, c.desc, 12, '#8a7a9a');
+      this.input.keyboard!.once(`keydown-${c.key}`, start);
+    });
 
     button(this, cx, 680, 'Volver', () => this.scene.start('Menu'), 16);
-    this.input.keyboard!.once('keydown-ENTER', start);
     this.input.keyboard!.once('keydown-ESC', () => this.scene.start('Menu'));
   }
 }

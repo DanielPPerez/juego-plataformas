@@ -68,6 +68,18 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.isDashing || this.hurtTimer > 0;
   }
 
+  // Daño base del ataque principal (el Mago lo sobrescribe con el de su rayo)
+  get attackDamage(): number {
+    return this.cfg.attackDamage;
+  }
+
+  // Rebote al golpear hacia abajo (pogo): recupera el doble salto y el dash aéreo
+  pogo(velocity: number) {
+    this.body.setVelocityY(-velocity);
+    this.airJumpsLeft = this.cfg.airJumps;
+    this.canAirDash = true;
+  }
+
   protected animState(): string {
     if (this.isDashing) return 'dash';
     if (this.hurtTimer > this.cfg.invulnMs - KNOCKBACK_MS) return 'hurt';
