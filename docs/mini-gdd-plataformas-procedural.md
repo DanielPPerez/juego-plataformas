@@ -75,7 +75,7 @@ Inicio de run → Explorar nivel procedural → Enemigos / recompensas
 7. Caer a un hueco = perder vida y reaparecer al inicio del chunk actual.
 8. **Seed** por run (para debug y para compartir runs). `?chunk=N` en la URL empieza en el chunk N (depuración).
 
-- Chunks por bioma: **~30 diseños** (×2 con espejos), repartidos entre las 3 alturas y las 3 dificultades, + inicio y 3 salidas (una por altura)
+- Chunks: bioma 1 = 31 diseños; biomas 2 y 3 = 12 propios cada uno + los del bioma 1 (×2 con espejos), con los colores y enemigos de su bioma (`biomes.json`). Persecuciones: 9 diseños por jefe; las de La Puerta y El Guardián tienen refugios contra la marea en cada mitad.
 - Longitud del nivel: 40 chunks (≈5 min), +5 por nivel
 - **Validación:** cada chunk debe poder cruzarse de su entrada a su salida con la física del jugador, incluidos doble salto y dash (test BFS), y además un test genera 1000 niveles completos y comprueba que todos se pueden completar. Si los bloques aleatorios bloquean un chunk, se quitan.
 
@@ -102,7 +102,7 @@ En lo visual, Lovecraft la describe como un conglomerado de **esferas iridiscent
 | 2 | Costa / puerto podrido | **La Puerta**                  | Arco de piedra viviente montado sobre un barco-ruina que huye por el mar; de su umbral salen Profundos.           | 1) Abre el portal y salen 2–3 enemigos · 2) Lluvia de proyectiles en arco · 3) Ola que inunda la parte baja de la pantalla | 2     | **B** — huye por la derecha            |
 | 3 | Ciudadela / cielo roto | **El Guardián (Yog-Sothoth)** | Conglomerado de esferas que absorbe a La Llave y La Puerta.                                                       | Fase 1: patrones de La Llave · Fase 2: patrones de La Puerta · Fase 3: combina ambos + rayo de esfera barriendo la pantalla | 3     | **A → B → A** (alterna por fase)      |
 
-- Implementación: **máquina de estados** (Idle → Telegraph → Attack → Recover) con patrones elegidos por peso (datos en `bosses.json`). La persecución es un modo de `GameScene` (`?boss` en la URL para probarla): cámara con scroll forzado, jugador encerrado en la vista, tocar al jefe = daño + expulsión.
+- Implementación: una sola clase `Boss` con **máquina de estados** (Idle → Telegraph → Attack → Recover) y patrones elegidos por peso; todo en `bosses.json` (vida, umbrales de fase, modo A/B por fase, velocidad del scroll y pesos de patrones). Cada jefe solo aporta su aspecto (`bossLooks.ts`). Patrones: tentáculo, larvas, embestida (La Llave); portal de Profundos, lluvia en arco, marea que inunda la parte baja (La Puerta); El Guardián usa los de ambos y añade el rayo (bajo: saltarlo · alto: quedarse en el suelo). En modo B, si el jugador se queda atrás el jefe se cura. La persecución es un modo de `GameScene` (`?boss` en la URL).
 - Cada ataque tiene **telegraph visible** (≥0.5 s: brillo, sonido o marca en el suelo)
 - La fase cambia al 50% de vida (y al 25% en el jefe final)
 - **Jefes por partes:** se construyen como `Container` de Phaser (cuerpo + tentáculos/partes animadas por separado con tweens). Es mucho más barato que animarlos frame a frame y se ve como Metal Slug.
@@ -121,7 +121,7 @@ Criaturas de los relatos originales de Lovecraft, adaptadas a lo medieval.
 | **Mi-Go**                             | 3     | Vuela y dispara en línea                                        | Descarnado        | *The Whisperer in Darkness*         |
 | **Shoggoth menor**                    | 3     | Masa lenta que se divide en 2 al recibir daño; bloquea pasillos | Patrulla          | *At the Mountains of Madness*       |
 
-> Solo hay 3 comportamientos base (**patrulla, volador, tirador**); los 6 enemigos son variaciones con datos en `enemies.json`. Hoy existe solo `Enemy` (patrulla) con flags de datos (`sight`, `turnAtLedges`, `jumpGaps`); volador y tirador se añaden cuando lleguen sus enemigos (bioma 2–3).
+> 3 comportamientos base, todo con datos: `Enemy` terrestre (`enemies.json`: perseguir, saltar huecos/muros, cambiar de altura, embestir, dividirse al morir) y `Flyer` volador (`flyers.json`: agarrar en picado o disparar a distancia). El Shoggoth menor se divide en dos **al morir** (no a cada golpe, para que no se multiplique sin fin).
 
 ## 9. Mejoras
 
@@ -138,9 +138,11 @@ Criaturas de los relatos originales de Lovecraft, adaptadas a lo medieval.
 | Suerte          | Monedas ×2                                          |
 | Sello arcano    | Reduce el cooldown de la habilidad en 25%            |
 | Sangre maldita  | +daño con 1 corazón                                |
+| Celeridad       | +15% velocidad al correr                            |
+| Regeneración    | Cura 1 corazón al empezar cada nivel                |
 
-- Se eligen **1 de 3** a la mitad y al final de cada nivel. Implementadas 9 (`upgrades.json`); **Proyectil extra** y **Sello arcano** esperan a que existan los proyectiles y la habilidad especial (clic derecho), que aún no está definida para el Caballero.
-- Los cofres dan 10 monedas. Al vencer al jefe del último bioma disponible (hoy, La Llave) la run termina con victoria.
+- Se eligen **1 de 3** a la mitad y al final de cada nivel. Las 13 están en `upgrades.json`; Sello arcano solo sale con el Mago.
+- Los cofres dan 10 monedas. Vencer a un jefe lleva al siguiente bioma; vencer a El Guardián termina la run con victoria.
 - ⚠️ "Intercambio de personaje tras la primera run" es meta-progresión → se movió al **Backlog v1.1**. En v1 se elige personaje al inicio de cada run.
 
 ## 10. Arte y audio
@@ -190,8 +192,8 @@ src/
   scenes/                # Boot, Preload, Menu, CharacterSelect, Game, BossChase, UI (HUD), GameOver
   entities/
     player/              # Player (base), Knight, Mage
-    enemies/             # Enemy (terrestre, configurado por datos); Flyer y Shooter llegarán con los biomas 2–3
-    bosses/              # KeyBoss (máquina de estados propia); la base común se extrae al llegar GateBoss
+    enemies/             # Enemy (terrestre) y Flyer (volador), configurados por datos
+    bosses/              # Boss (máquina de estados + patrones) y bossLooks (aspecto de cada jefe)
   systems/
     ChunkGenerator.ts    # secuencia de chunks + contenido on-the-fly (sin Phaser, testeable)
     ChunkStreamer.ts     # carga/descarga chunks alrededor del jugador (niveles y persecución)

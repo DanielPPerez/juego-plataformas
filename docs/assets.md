@@ -28,15 +28,20 @@
 | `sprites/cultist.png` | frames de 16×24 | Animación `walk` |
 | `sprites/rat.png` | frames de 14×8 | Animación `walk` |
 | `sprites/larva.png` | frames de 10×6 | Animación `walk` |
+| `sprites/deep_one.png` | frames de 16×24 | Profundo (bioma 2), animación `walk` |
+| `sprites/night_gaunt.png` | frames de 20×14 | Descarnado nocturno (bioma 2), animación `fly` |
+| `sprites/shoggoth.png` / `shoggoth_small.png` | 28×20 / 16×12 | Shoggoth menor y sus mitades (bioma 3), animación `walk` |
+| `sprites/mi_go.png` | frames de 18×14 | Mi-Go (bioma 3), animación `fly` |
+| `sprites/shot.png` | 6×6 | Proyectil enemigo (Mi-Go, lluvia de La Puerta) |
 | `sprites/exit.png` | 16×32 | Puerta de salida |
 | `sprites/coin.png` | 6×6 | Moneda |
 | `sprites/chest.png` | 14×10 | Cofre |
-| `tiles/tiles.png` | tiles de 16×16 | Por ahora: tile 0 = bloque sólido, tile 1 = plataforma atravesable (ver abajo) |
+| `tiles/tiles1.png`, `tiles2.png`, `tiles3.png` | tiles de 16×16 | Uno por bioma. Tile 0 = bloque sólido, tile 1 = plataforma atravesable (ver abajo) |
 | `ui/heart.png`, `ui/heart-empty.png` | 7×6 | Corazones del HUD |
 
 Si un pack trae frames de otro tamaño (por ejemplo, un caballero de 32×32), no hace falta recortarlo: basta con cambiar `frameWidth`/`frameHeight` y los índices de animación en `assets.json`. Yo lo ajusto.
 
-**Todavía sin soporte (lo añado cuando tengas el arte):** fondos con parallax (3 capas por bioma), partes de La Llave (cuerpo, llave, ojo, tentáculo), tiles de borde y esquina (autotiling) y audio.
+**Todavía sin soporte (lo añado cuando tengas el arte):** fondos con parallax (3 capas por bioma), partes de los jefes (hoy son formas geométricas en `src/entities/bosses/bossLooks.ts`), tiles de borde y esquina (autotiling) y audio.
 
 ## Dibujar tu propio arte
 
@@ -93,7 +98,7 @@ Recomendación: empieza con **Piskel** y, si te engancha, pasa a **Aseprite**.
 | `rat.png` | 14×8 | 56×8 |
 | `larva.png` | 10×6 | 40×6 |
 
-### Tiles (`tiles.png`)
+### Tiles (`tiles1.png` … `tiles3.png`, uno por bioma)
 
 Por ahora, 2 tiles de 16×16 en fila (imagen de 32×16): el primero es el bloque sólido y el segundo la plataforma atravesable (dibuja solo la franja de arriba; el resto, transparente). Cuando tengas más variantes (bordes, esquinas, decoración), dímelo y añado el autotiling.
 

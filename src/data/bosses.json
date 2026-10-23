@@ -1,29 +1,63 @@
 {
   "key": {
     "name": "La Llave",
+    "look": "key",
     "hp": 30,
+    "phaseAt": [0.5],
     "contactDamage": 1,
-    "tentacleDamage": 1,
+    "hazardDamage": 1,
     "recoverMs": 500,
     "tentacleMs": 450,
     "chargeMs": 1200,
     "chargeSpeed": 130,
-    "phaseAt": 0.5,
+    "lagHealPerSec": 0,
+    "rainShots": 0,
+    "floodMs": 0,
+    "beamMs": 0,
     "phases": [
-      {
-        "scrollSpeed": 45,
-        "idleMs": 900,
-        "telegraphMs": 700,
-        "larvae": 2,
-        "patterns": { "tentacle": 3, "larvae": 2, "charge": 1 }
-      },
-      {
-        "scrollSpeed": 60,
-        "idleMs": 550,
-        "telegraphMs": 550,
-        "larvae": 3,
-        "patterns": { "tentacle": 3, "larvae": 2, "charge": 2 }
-      }
+      { "mode": "A", "scrollSpeed": 45, "idleMs": 900, "telegraphMs": 700, "spawnCount": 2, "patterns": { "tentacle": 3, "larvae": 2, "charge": 1 } },
+      { "mode": "A", "scrollSpeed": 60, "idleMs": 550, "telegraphMs": 550, "spawnCount": 3, "patterns": { "tentacle": 3, "larvae": 2, "charge": 2 } }
+    ]
+  },
+  "gate": {
+    "name": "La Puerta",
+    "look": "gate",
+    "hp": 36,
+    "phaseAt": [0.5],
+    "contactDamage": 1,
+    "hazardDamage": 1,
+    "recoverMs": 600,
+    "tentacleMs": 0,
+    "chargeMs": 0,
+    "chargeSpeed": 0,
+    "lagHealPerSec": 1.5,
+    "rainShots": 5,
+    "floodMs": 1500,
+    "beamMs": 0,
+    "phases": [
+      { "mode": "B", "scrollSpeed": 50, "idleMs": 1000, "telegraphMs": 800, "spawnCount": 2, "patterns": { "portal": 2, "rain": 3, "flood": 1 } },
+      { "mode": "B", "scrollSpeed": 62, "idleMs": 700, "telegraphMs": 650, "spawnCount": 3, "patterns": { "portal": 2, "rain": 3, "flood": 2 } }
+    ]
+  },
+  "guardian": {
+    "name": "El Guardián",
+    "look": "guardian",
+    "hp": 60,
+    "phaseAt": [0.5, 0.25],
+    "contactDamage": 1,
+    "hazardDamage": 1,
+    "recoverMs": 500,
+    "tentacleMs": 450,
+    "chargeMs": 1100,
+    "chargeSpeed": 130,
+    "lagHealPerSec": 1.5,
+    "rainShots": 6,
+    "floodMs": 1400,
+    "beamMs": 600,
+    "phases": [
+      { "mode": "A", "scrollSpeed": 50, "idleMs": 800, "telegraphMs": 650, "spawnCount": 2, "patterns": { "tentacle": 3, "larvae": 2, "charge": 1 } },
+      { "mode": "B", "scrollSpeed": 60, "idleMs": 700, "telegraphMs": 650, "spawnCount": 2, "patterns": { "portal": 2, "rain": 3, "flood": 1 } },
+      { "mode": "A", "scrollSpeed": 65, "idleMs": 550, "telegraphMs": 550, "spawnCount": 3, "patterns": { "tentacle": 2, "larvae": 1, "charge": 1, "rain": 2, "beam": 3 } }
     ]
   }
 }

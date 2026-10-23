@@ -36,9 +36,10 @@ export function newRun(scene: Phaser.Scene, character: Character = 'knight', see
 }
 
 export function getRun(scene: Phaser.Scene): RunState {
-  // Sin run (entrada directa por URL de depuración): ?mage elige al Mago
+  // Sin run (entrada directa por URL de depuración): ?mage elige al Mago y ?level=N el nivel
   const character = new URLSearchParams(location.search).has('mage') ? 'mage' : 'knight';
-  return (scene.registry.get('run') as RunState | undefined) ?? newRun(scene, character, urlParam('seed') ?? undefined);
+  const level = Number(urlParam('level') ?? 1);
+  return (scene.registry.get('run') as RunState | undefined) ?? newRun(scene, character, urlParam('seed') ?? undefined, level);
 }
 
 export function stacks(run: RunState, upgrade: string): number {
@@ -49,9 +50,9 @@ export function urlParam(name: string): string | null {
   return new URLSearchParams(location.search).get(name);
 }
 
-// ?seed, ?chunk, ?boss o ?mage en la URL: entrar directo al juego (depuración)
+// ?seed, ?chunk, ?boss, ?mage o ?level en la URL: entrar directo al juego (depuración)
 export function isDebugUrl(): boolean {
-  return ['seed', 'chunk', 'boss', 'mage'].some((p) => new URLSearchParams(location.search).has(p));
+  return ['seed', 'chunk', 'boss', 'mage', 'level'].some((p) => new URLSearchParams(location.search).has(p));
 }
 
 // Herramientas de desarrollo (selector de tramos, F2/F3): en `npm run dev` o con ?dev

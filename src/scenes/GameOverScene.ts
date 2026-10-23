@@ -14,8 +14,8 @@ export class GameOverScene extends Phaser.Scene {
     const run = getRun(this);
     const isRecord = saveRecord(run.levelIndex, run.coins);
 
-    text(this, cx, 200, data.victory ? '¡La Llave ha caído!' : 'Has muerto', 48, data.victory ? '#ffd040' : '#e03040');
-    if (data.victory) text(this, cx, 260, 'Fin del bioma 1', 16, '#8a7a9a');
+    text(this, cx, 200, data.victory ? '¡La Entidad ha caído!' : 'Has muerto', 48, data.victory ? '#ffd040' : '#e03040');
+    if (data.victory) text(this, cx, 260, 'La llave, la puerta y el guardián vuelven al silencio', 16, '#8a7a9a');
     text(this, cx, 340, `Nivel ${run.levelIndex} · ${run.coins} monedas · ${run.upgrades.length} mejoras`, 16);
     if (isRecord) text(this, cx, 380, '¡Nuevo récord!', 16, '#ffd040');
     text(this, cx, 420, `Seed ${run.seed}`, 12, '#6a6a7a');

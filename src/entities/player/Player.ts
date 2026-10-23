@@ -10,6 +10,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
   facing: 1 | -1 = 1;
   hp: number;
+  // Mejora Celeridad
+  speedMultiplier = 1;
   // La escena lo actualiza cada frame: ¿los pies están sobre una plataforma atravesable?
   standingOnOneWay = false;
 
@@ -149,7 +151,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
 
     // Horizontal: acelerar hacia la velocidad objetivo (sin control durante el knockback)
     const knockedBack = this.hurtTimer > cfg.invulnMs - KNOCKBACK_MS;
-    const target = axis * cfg.maxRunSpeed;
+    const target = axis * cfg.maxRunSpeed * this.speedMultiplier;
     const accelerating = axis !== 0;
     const rate = this.onFloor
       ? (accelerating ? cfg.groundAccel : cfg.groundDecel)

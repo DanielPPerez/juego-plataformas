@@ -1,5 +1,7 @@
 import Phaser from 'phaser';
 import { TITLE } from '../config';
+import biomes from '../data/biomes.json';
+import bosses from '../data/bosses.json';
 import { isDevMode, newRun, type Character } from '../systems/Run';
 import { loadRecord } from '../systems/SaveData';
 import { button, text } from '../utils/ui';
@@ -34,10 +36,16 @@ export class MenuScene extends Phaser.Scene {
         newRun(this, character, undefined, levelIndex);
         this.scene.start('Game', { boss });
       };
-      button(this, cx - 320, 610, 'Nivel 1', jump(1, false), 16);
-      button(this, cx - 110, 610, 'Nivel 2', jump(2, false), 16);
-      button(this, cx + 140, 610, 'Jefe: La Llave', jump(2, true), 16);
-      text(this, cx, 660, 'En juego: F2 saltar tramo · F3 invencible', 12, '#6a6a7a');
+      // Una fila por bioma: sus 2 niveles y su jefe
+      biomes.forEach((biome, i) => {
+        const y = 615 + i * 34;
+        const first = biome.id * 2 - 1;
+        text(this, cx - 420, y, biome.name, 12, '#8a7a9a');
+        button(this, cx - 130, y, `Nivel ${first}`, jump(first, false), 14);
+        button(this, cx + 30, y, `Nivel ${first + 1}`, jump(first + 1, false), 14);
+        button(this, cx + 250, y, `Jefe: ${bosses[biome.boss as keyof typeof bosses].name}`, jump(first + 1, true), 14);
+      });
+      text(this, cx, 730, 'En juego: F2 saltar tramo · F3 invencible', 12, '#6a6a7a');
     }
   }
 }

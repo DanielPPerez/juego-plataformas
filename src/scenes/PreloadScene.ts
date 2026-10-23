@@ -1,6 +1,7 @@
 import Phaser from 'phaser';
 import { FONT } from '../config';
 import sheets from '../data/assets.json';
+import biomes from '../data/biomes.json';
 import { isDebugUrl } from '../systems/Run';
 
 type Sheet = { frameWidth: number; frameHeight: number; anims: Record<string, number[]> };
@@ -70,13 +71,41 @@ export class PreloadScene extends Phaser.Scene {
     make('bolt', 8, 8, () => g.fillStyle(0x80c0ff).fillCircle(4, 4, 4).fillStyle(0xffffff).fillCircle(4, 4, 2));
     make('wave', 10, 16, () => g.fillStyle(0xffffff, 0.8).fillRect(4, 0, 3, 16).fillRect(1, 3, 3, 10));
 
-    // Tileset: 0 = sólido, 1 = plataforma atravesable
-    make('tiles', 32, 16, () => {
-      g.fillStyle(0x4a3b5c).fillRect(0, 0, 16, 16);
-      g.fillStyle(0x6b5a80).fillRect(0, 0, 16, 2);
-      g.fillStyle(0x8a6a40).fillRect(16, 0, 16, 4);
-      g.fillStyle(0x5a4028).fillRect(16, 4, 16, 1);
+    // Tileset de cada bioma (tiles1, tiles2, tiles3): 0 = sólido, 1 = plataforma atravesable
+    for (const biome of biomes) {
+      const solid = Phaser.Display.Color.HexStringToColor(biome.solid);
+      const platform = Phaser.Display.Color.HexStringToColor(biome.platform);
+      make(`tiles${biome.id}`, 32, 16, () => {
+        g.fillStyle(solid.color).fillRect(0, 0, 16, 16);
+        g.fillStyle(solid.clone().lighten(15).color).fillRect(0, 0, 16, 2);
+        g.fillStyle(platform.color).fillRect(16, 0, 16, 4);
+        g.fillStyle(platform.clone().darken(20).color).fillRect(16, 4, 16, 1);
+      });
+    }
+
+    // Enemigos de los biomas 2 y 3
+    make('deep_one', 16, 24, () => {
+      g.fillStyle(0x2a6a5a).fillRect(2, 4, 12, 20);
+      g.fillStyle(0x3a8a6a).fillRect(3, 0, 10, 8);
+      g.fillStyle(0xe0e070).fillRect(10, 3, 2, 2);
     });
+    make('shoggoth', 28, 20, () => {
+      g.fillStyle(0x1a2a1a).fillEllipse(14, 12, 28, 18);
+      g.fillStyle(0x8ad07a).fillCircle(8, 9, 2).fillCircle(17, 6, 2).fillCircle(22, 12, 2);
+    });
+    make('shoggoth_small', 16, 12, () => {
+      g.fillStyle(0x1a2a1a).fillEllipse(8, 7, 16, 10);
+      g.fillStyle(0x8ad07a).fillCircle(5, 5, 1).fillCircle(11, 6, 1);
+    });
+    make('night_gaunt', 20, 14, () => {
+      g.fillStyle(0x101018).fillTriangle(0, 2, 10, 8, 0, 12).fillTriangle(20, 2, 10, 8, 20, 12);
+      g.fillStyle(0x202030).fillRect(7, 3, 6, 11);
+    });
+    make('mi_go', 18, 14, () => {
+      g.fillStyle(0xc07a8a).fillEllipse(9, 8, 14, 10);
+      g.fillStyle(0xe0b0c0, 0.7).fillEllipse(4, 4, 8, 5).fillEllipse(14, 4, 8, 5);
+    });
+    make('shot', 6, 6, () => g.fillStyle(0xff5050).fillCircle(3, 3, 3));
 
     make('exit', 16, 32, () => {
       g.fillStyle(0x2a1040).fillRect(0, 0, 16, 32);

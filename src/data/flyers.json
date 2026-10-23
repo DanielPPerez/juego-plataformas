@@ -1,0 +1,12 @@
+{
+  "night_gaunt": {
+    "biome": 2, "texture": "night_gaunt", "hp": 2, "damage": 1, "behavior": "grab",
+    "speed": 50, "diveSpeed": 170, "sight": 130, "cooldownMs": 2500,
+    "carryMs": 900, "liftSpeed": 90, "fireMs": 0, "shotSpeed": 0, "keepDistance": 0
+  },
+  "mi_go": {
+    "biome": 3, "texture": "mi_go", "hp": 2, "damage": 1, "behavior": "shoot",
+    "speed": 45, "diveSpeed": 0, "sight": 220, "cooldownMs": 1600,
+    "carryMs": 0, "liftSpeed": 0, "fireMs": 1600, "shotSpeed": 150, "keepDistance": 110
+  }
+}

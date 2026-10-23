@@ -20,9 +20,9 @@ A/D o flechas: moverse · W/Espacio: saltar (doble salto en el aire) · Shift: d
 
 Con `npm run dev` (o `?dev` en la URL):
 
-- El menú tiene un selector para ir directo al Nivel 1, al Nivel 2 o al jefe (La Llave), con el personaje que elijas.
+- El menú tiene un selector para ir directo a cualquier nivel o jefe de los 3 biomas, con el personaje que elijas.
 - En juego: **F2** salta el tramo actual (termina el nivel o mata al jefe) y **F3** activa o desactiva la invencibilidad.
-- URL: `?seed=abc` repite una run, `?chunk=N` empieza en el chunk N, `?boss` va directo a la persecución y `?mage` juega con el Mago.
+- URL: `?seed=abc` repite una run, `?chunk=N` empieza en el chunk N, `?boss` va directo a la persecución, `?mage` juega con el Mago y `?level=N` empieza en el nivel N (3-4: Puerto podrido, 5-6: Ciudadela; con `?boss`, la persecución de ese bioma).
 
 ## Arte
 

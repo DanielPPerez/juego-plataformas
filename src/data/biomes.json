@@ -1,0 +1,32 @@
+[
+  {
+    "id": 1,
+    "name": "Aldea maldita",
+    "chunks": ["bioma1"],
+    "chase": ["chase1"],
+    "boss": "key",
+    "background": "#0b0b12",
+    "solid": "#4a3b5c",
+    "platform": "#8a6a40"
+  },
+  {
+    "id": 2,
+    "name": "Puerto podrido",
+    "chunks": ["bioma1", "bioma2"],
+    "chase": ["chase2"],
+    "boss": "gate",
+    "background": "#07121a",
+    "solid": "#2f4a52",
+    "platform": "#6a5a3a"
+  },
+  {
+    "id": 3,
+    "name": "Ciudadela del cielo roto",
+    "chunks": ["bioma1", "bioma3"],
+    "chase": ["chase3"],
+    "boss": "guardian",
+    "background": "#160a1c",
+    "solid": "#5a4a3a",
+    "platform": "#9a8a6a"
+  }
+]

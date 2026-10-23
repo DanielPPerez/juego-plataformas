@@ -1,47 +1,32 @@
 {
   "cultist": {
-    "biome": 1,
-    "texture": "cultist",
-    "count": 1,
-    "hp": 3,
-    "damage": 1,
-    "speed": 35,
-    "chaseSpeed": 75,
-    "airSpeed": 85,
-    "sight": 140,
-    "jumps": false,
-    "jumpVelocity": 430,
-    "sightY": 130,
-    "climbs": true
-  },
-  "larva": {
-    "biome": 0,
-    "texture": "larva",
-    "count": 1,
-    "hp": 1,
-    "damage": 1,
-    "speed": 60,
-    "chaseSpeed": 60,
-    "airSpeed": 120,
-    "sight": 480,
-    "jumps": true,
-    "jumpVelocity": 330,
-    "sightY": 200,
-    "climbs": false
+    "biome": 1, "texture": "cultist", "count": 1, "hp": 3, "damage": 1,
+    "speed": 35, "chaseSpeed": 75, "airSpeed": 85, "sight": 140, "sightY": 130,
+    "jumps": false, "climbs": true, "lunge": false, "jumpVelocity": 430, "splitsInto": ""
   },
   "rat": {
-    "biome": 1,
-    "texture": "rat",
-    "count": 3,
-    "hp": 1,
-    "damage": 1,
-    "speed": 110,
-    "chaseSpeed": 110,
-    "airSpeed": 120,
-    "sight": 0,
-    "jumps": true,
-    "jumpVelocity": 300,
-    "sightY": 0,
-    "climbs": false
+    "biome": 1, "texture": "rat", "count": 3, "hp": 1, "damage": 1,
+    "speed": 110, "chaseSpeed": 110, "airSpeed": 120, "sight": 0, "sightY": 0,
+    "jumps": true, "climbs": false, "lunge": false, "jumpVelocity": 300, "splitsInto": ""
+  },
+  "deep_one": {
+    "biome": 2, "texture": "deep_one", "count": 1, "hp": 3, "damage": 1,
+    "speed": 40, "chaseSpeed": 80, "airSpeed": 90, "sight": 150, "sightY": 130,
+    "jumps": false, "climbs": true, "lunge": true, "jumpVelocity": 430, "splitsInto": ""
+  },
+  "shoggoth": {
+    "biome": 3, "texture": "shoggoth", "count": 1, "hp": 6, "damage": 1,
+    "speed": 18, "chaseSpeed": 30, "airSpeed": 30, "sight": 140, "sightY": 40,
+    "jumps": false, "climbs": false, "lunge": false, "jumpVelocity": 0, "splitsInto": "shoggoth_small"
+  },
+  "shoggoth_small": {
+    "biome": 0, "texture": "shoggoth_small", "count": 1, "hp": 2, "damage": 1,
+    "speed": 30, "chaseSpeed": 50, "airSpeed": 50, "sight": 160, "sightY": 40,
+    "jumps": false, "climbs": false, "lunge": false, "jumpVelocity": 0, "splitsInto": ""
+  },
+  "larva": {
+    "biome": 0, "texture": "larva", "count": 1, "hp": 1, "damage": 1,
+    "speed": 60, "chaseSpeed": 60, "airSpeed": 120, "sight": 480, "sightY": 200,
+    "jumps": true, "climbs": false, "lunge": false, "jumpVelocity": 330, "splitsInto": ""
   }
 }
