@@ -22,12 +22,6 @@ describe('Upgrades', () => {
     }
   });
 
-  it('el Caballero nunca recibe mejoras del Mago', () => {
-    for (let i = 0; i < 100; i++) {
-      rollUpgrades(run(), `k${i}`).forEach((u) => expect(u.id).not.toBe('arcane_seal'));
-    }
-  });
-
   it('Vitalidad sube el máximo y cura 1', () => {
     const r = { ...run(), hp: 3 };
     applyUpgrade(r, byId('vitality'));

@@ -234,7 +234,7 @@ export class GameScene extends Phaser.Scene {
     this.updateCarry();
     if (!this.carriedBy) this.player.update(dt);
     if (this.player instanceof Knight) {
-      this.player.updateAttack(dt);
+      this.player.updateAttack(dt, specialCooldownMs(this.run, this.player.specialBaseCooldownMs));
       this.handleAttack(this.player);
     } else {
       this.handleCast(this.player, dt);
@@ -273,18 +273,17 @@ export class GameScene extends Phaser.Scene {
 
   private updateHud(chunk?: ChunkInstance) {
     this.run.hp = this.player.hp;
-    const nova = this.player instanceof Mage
-      ? `  Nova ${this.player.specialReadyInMs > 0 ? (this.player.specialReadyInMs / 1000).toFixed(1) + 's' : 'lista'}`
-      : '';
+    const readyIn = this.player.specialReadyInMs;
+    const special = `  ${this.player instanceof Mage ? 'Nova' : 'Tajo'} ${readyIn > 0 ? (readyIn / 1000).toFixed(1) + 's' : 'listo'}`;
     const hud: Hud = {
       hp: this.player.hp,
       maxHp: this.run.maxHp,
-      status: `${this.biome.name} · Nivel ${this.run.levelIndex}  Monedas ${this.run.coins}${this.run.shield ? '  Escudo ' + this.run.shield : ''}${nova}`,
+      status: `${this.biome.name} · Nivel ${this.run.levelIndex}  Monedas ${this.run.coins}${this.run.shield ? '  Escudo ' + this.run.shield : ''}${special}`,
       debug: `Seed ${this.run.seed}  Chunk ${chunk?.index ?? '-'}/${this.streamer.chunkCount - 1} ${chunk?.name ?? ''}${this.invincible ? '  INVENCIBLE' : ''}`,
       boss: this.boss && { name: this.boss.stats.name, hp: Math.ceil(this.boss.hp), maxHp: this.boss.maxHp },
       hint: this.player instanceof Mage
         ? 'Clic disparar al cursor  Clic der. nova  Shift dash  S bajar  Esc pausa  F1 ajustes'
-        : 'Clic cortar  W+clic arriba  S+clic en el aire abajo (rebota)  Shift dash  S bajar  Esc pausa',
+        : 'Clic cortar  Clic der. tajo  W+clic arriba  S+clic en el aire abajo (rebota)  Shift dash  Esc pausa',
     };
     this.registry.set('hud', hud);
   }
@@ -381,7 +380,10 @@ export class GameScene extends Phaser.Scene {
     const hitbox = knight.attackHitbox;
     this.slash.setVisible(!!hitbox);
     if (!hitbox) return;
-    this.slash.setPosition(hitbox.centerX, hitbox.centerY).setSize(hitbox.width, hitbox.height);
+    this.slash
+      .setPosition(hitbox.centerX, hitbox.centerY)
+      .setSize(hitbox.width, hitbox.height)
+      .setFillStyle(knight.bigSwing ? 0xffd040 : 0xffffff, 0.5);
 
     let hit = false;
     for (const e of this.targets()) {
@@ -399,7 +401,7 @@ export class GameScene extends Phaser.Scene {
       // Corte hacia abajo que acierta: rebote (pogo)
       if (knight.swingDir === 'down') knight.pogo(POGO_VELOCITY);
       this.hitstop();
-      this.cameras.main.shake(80, 0.004);
+      this.cameras.main.shake(knight.bigSwing ? 140 : 80, knight.bigSwing ? 0.008 : 0.004);
     }
   }
 

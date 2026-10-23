@@ -58,7 +58,7 @@ Inicio de run → Explorar nivel procedural → Enemigos / recompensas
 - Movimiento: correr, saltar, salto variable, coyote time (~100 ms), jump buffer (~100 ms)
 - Extra: **dash** (con i-frames, 1 en el aire) + **doble salto** (decidido en la semana 1: sin él las plataformas altas quedaban fuera de alcance). Wall jump descartado.
 - Plataformas atravesables: se suben desde abajo; **Abajo (S/↓)** para bajar
-- Combate: **Caballero** melee con cortes en 3 direcciones (lateral, W+clic arriba, S+clic en el aire abajo con rebote/pogo). **Mago** dispara rayos al cursor y su habilidad (clic der.) es la **nova arcana**: 8 rayos en círculo, 4 s de espera. Proyectiles con object pooling. El Caballero aún no tiene habilidad especial.
+- Combate: **Caballero** melee con cortes en 3 direcciones (lateral, W+clic arriba, S+clic en el aire abajo con rebote/pogo). **Mago** dispara rayos al cursor y su habilidad (clic der.) es la **nova arcana**: 8 rayos en círculo, 4 s de espera. Proyectiles con object pooling. Habilidad del **Caballero** (clic der.): **Tajo**, un corte con el doble de área (doble alcance), 3 s de espera. Sello arcano reduce la espera de la habilidad de ambos.
 - Vida: 5 corazones · i-frames tras recibir daño
 - Controles: teclado (A/D o flechas para moverse, W/Espacio salto) + mouse (clic izq. ataque normal, clic der. habilidad). El aim del Mago sigue al cursor. Gamepad opcional en v1.1
 

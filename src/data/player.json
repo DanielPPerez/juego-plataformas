@@ -23,5 +23,6 @@
   "knockback": 180,
   "attackDamage": 1,
   "attackCooldownMs": 300,
-  "attackRange": 28
+  "attackRange": 28,
+  "specialCooldownMs": 3000
 }

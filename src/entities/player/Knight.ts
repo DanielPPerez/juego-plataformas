@@ -7,16 +7,23 @@ import type { PlayerConfig } from '../../systems/PlayerConfig';
 const SWING_MS = 120;
 // Ancho de los cortes hacia arriba y abajo
 const VERTICAL_SWING_W = 36;
+// Tajo (habilidad, clic der.): doble de alcance y un poco más ancho → ~doble de área
+const BIG_RANGE = 2;
+const BIG_CROSS = 1.25;
 
 export type SwingDir = 'side' | 'up' | 'down';
 
-// Caballero: ataque melee hacia donde mira; con W/↑ corta hacia arriba y con S/↓ en el aire hacia abajo
+// Caballero: ataque melee hacia donde mira; con W/↑ corta hacia arriba y con S/↓ en el aire hacia abajo.
+// Habilidad (clic der.): Tajo, un corte con el doble de área.
 export class Knight extends Player {
   // Mejora "Doble ataque": un segundo golpe automático tras el primero
   doubleAttack = false;
   // true solo en el frame en que empieza un golpe
   justSwung = false;
   swingDir: SwingDir = 'side';
+  // El golpe en curso es el Tajo
+  bigSwing = false;
+  private specialTimer = 0;
   private attackTimer = 0;
   private swingTimer = 0;
   private secondSwingTimer = 0;
@@ -31,32 +38,51 @@ export class Knight extends Player {
   get attackHitbox(): Phaser.Geom.Rectangle | null {
     if (this.swingTimer <= 0) return null;
     const b = this.body;
-    const range = this.cfg.attackRange;
+    const range = this.cfg.attackRange * (this.bigSwing ? BIG_RANGE : 1);
+    const cross = this.bigSwing ? BIG_CROSS : 1;
+    const vw = VERTICAL_SWING_W * cross;
     if (this.swingDir === 'up') {
-      return new Phaser.Geom.Rectangle(b.center.x - VERTICAL_SWING_W / 2, b.top - range, VERTICAL_SWING_W, range + b.halfHeight);
+      return new Phaser.Geom.Rectangle(b.center.x - vw / 2, b.top - range, vw, range + b.halfHeight);
     }
     if (this.swingDir === 'down') {
-      return new Phaser.Geom.Rectangle(b.center.x - VERTICAL_SWING_W / 2, b.center.y, VERTICAL_SWING_W, b.halfHeight + range);
+      return new Phaser.Geom.Rectangle(b.center.x - vw / 2, b.center.y, vw, b.halfHeight + range);
     }
     const w = b.halfWidth + range;
-    return new Phaser.Geom.Rectangle(this.facing > 0 ? b.center.x : b.center.x - w, b.center.y - 16, w, 32);
+    const h = 32 * cross;
+    return new Phaser.Geom.Rectangle(this.facing > 0 ? b.center.x : b.center.x - w, b.center.y - h / 2, w, h);
   }
 
-  updateAttack(dtMs: number) {
+  get specialReadyInMs(): number {
+    return Math.max(0, this.specialTimer);
+  }
+
+  get specialBaseCooldownMs(): number {
+    return this.cfg.specialCooldownMs;
+  }
+
+  updateAttack(dtMs: number, specialCooldownMs: number) {
     this.justSwung = false;
     this.attackTimer -= dtMs;
     this.swingTimer -= dtMs;
+    this.specialTimer -= dtMs;
     if (this.secondSwingTimer > 0 && (this.secondSwingTimer -= dtMs) <= 0) this.swing(this.swingDir);
-    if (this.controls.attackPressed && this.attackTimer <= 0) {
+    const dir = this.controls.upHeld ? 'up' : this.controls.downHeld && !this.onFloor ? 'down' : 'side';
+    if (this.controls.specialPressed && this.specialTimer <= 0) {
+      this.specialTimer = specialCooldownMs;
       this.attackTimer = this.cfg.attackCooldownMs;
-      const dir = this.controls.upHeld ? 'up' : this.controls.downHeld && !this.onFloor ? 'down' : 'side';
+      this.swing(dir, true);
+    } else if (this.controls.attackPressed && this.attackTimer <= 0) {
+      this.attackTimer = this.cfg.attackCooldownMs;
       this.swing(dir);
       if (this.doubleAttack) this.secondSwingTimer = SWING_MS + 60;
     }
   }
 
   protected override animState(): string {
-    if (this.swingTimer > 0 && !this.isDashing) return this.swingDir === 'side' ? 'attack' : `attack_${this.swingDir}`;
+    if (this.swingTimer > 0 && !this.isDashing) {
+      if (this.bigSwing) return 'special';
+      return this.swingDir === 'side' ? 'attack' : `attack_${this.swingDir}`;
+    }
     return super.animState();
   }
 
@@ -67,8 +93,9 @@ export class Knight extends Player {
     return true;
   }
 
-  private swing(dir: SwingDir) {
+  private swing(dir: SwingDir, big = false) {
     this.swingDir = dir;
+    this.bigSwing = big;
     this.swingTimer = SWING_MS;
     this.swingHits.clear();
     this.justSwung = true;

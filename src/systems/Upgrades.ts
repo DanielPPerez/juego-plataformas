@@ -5,12 +5,9 @@ import { stacks, type RunState } from './Run';
 export type Upgrade = (typeof upgrades)[number];
 
 // 3 mejoras distintas al azar (determinista por seed); no salen las no acumulables que ya tienes
-// ni las de otro personaje
 export function rollUpgrades(run: RunState, seed: string): Upgrade[] {
   const rng = new RNG(seed);
-  const pool = upgrades.filter(
-    (u) => (u.stackable || stacks(run, u.id) === 0) && (!('character' in u) || u.character === run.character),
-  );
+  const pool = upgrades.filter((u) => u.stackable || stacks(run, u.id) === 0);
   const choices: Upgrade[] = [];
   while (choices.length < 3 && pool.length > 0) {
     choices.push(pool.splice(Math.floor(rng.float() * pool.length), 1)[0]);

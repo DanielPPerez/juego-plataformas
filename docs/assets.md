@@ -21,7 +21,7 @@
 
 | Archivo (`src/assets/…`) | Tamaño | Notas |
 | --- | --- | --- |
-| `sprites/knight.png` | frames de 24×32 | 25 frames (ver la tabla de abajo) |
+| `sprites/knight.png` | frames de 24×32 | 28 frames (ver la tabla de abajo) |
 | `sprites/mage.png` | frames de 24×32 | 19 frames (ver la tabla de abajo) |
 | `sprites/bolt.png` | 8×8 | Rayo del Mago (el juego lo rota hacia donde va) |
 | `sprites/wave.png` | 10×16 | Onda de corte del Caballero (mejora Proyectil extra) |
@@ -64,7 +64,7 @@ Recomendación: empieza con **Piskel** y, si te engancha, pasa a **Aseprite**.
 - **Exportar:** una **fila horizontal** con todos los frames seguidos en el orden de la tabla, sin márgenes ni separación entre frames, a escala 1×. En Piskel: *Export → PNG → Spritesheet*, 1 fila. En Aseprite: *File → Export Sprite Sheet → Horizontal Strip*, *Border/Spacing = 0*.
 - Si cambias el número de frames de una animación, ajusta los índices en `src/data/assets.json` (o dímelo y lo hago yo).
 
-### Caballero (`knight.png`, frames de 24×32, 25 frames → imagen de 600×32)
+### Caballero (`knight.png`, frames de 24×32, 28 frames → imagen de 672×32)
 
 | Frames | Animación | Notas |
 | --- | --- | --- |
@@ -77,6 +77,7 @@ Recomendación: empieza con **Piskel** y, si te engancha, pasa a **Aseprite**.
 | 20–22 | `attack_down` | Corte hacia abajo (en el aire) |
 | 23 | `dash` | Pose estirada |
 | 24 | `hurt` | Retroceso al recibir daño |
+| 25–27 | `special` | Tajo (clic der.): corte grande con el doble de área |
 
 ### Mago (`mage.png`, frames de 24×32, 19 frames → imagen de 456×32)
 

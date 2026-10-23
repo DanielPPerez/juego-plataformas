@@ -29,6 +29,7 @@ const RANGES: Record<keyof PlayerConfig, Range> = {
   attackDamage: [1, 5, 1],
   attackCooldownMs: [100, 1000, 10],
   attackRange: [8, 48, 2],
+  specialCooldownMs: [500, 10000, 100],
 };
 
 // Panel HTML de ajuste en vivo (F1). Herramienta de desarrollo, no forma parte del juego.

@@ -13,7 +13,7 @@ Phaser 3 + TypeScript + Vite. Diseño en [docs/mini-gdd-plataformas-procedural.m
 
 A/D o flechas: moverse · W/Espacio: saltar (doble salto en el aire) · Shift: dash · S o Abajo: bajar de una plataforma · Esc: pausa · F1: panel de ajuste
 
-- **Caballero:** clic = corte lateral · W/↑ + clic = corte hacia arriba · S/↓ + clic en el aire = corte hacia abajo (rebota al acertar)
+- **Caballero:** clic = corte lateral · clic derecho = Tajo (doble de área) · W/↑ + clic = corte hacia arriba · S/↓ + clic en el aire = corte hacia abajo (rebota al acertar)
 - **Mago:** clic = rayo hacia el cursor · clic derecho = nova arcana
 
 ## Herramientas de desarrollo

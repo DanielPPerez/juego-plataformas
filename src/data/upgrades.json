@@ -11,5 +11,5 @@
   { "id": "celerity", "name": "Celeridad", "desc": "+15 % de velocidad al correr", "stackable": true },
   { "id": "regen", "name": "Regeneración", "desc": "Cura 1 corazón al empezar cada nivel", "stackable": false },
   { "id": "extra_projectile", "name": "Proyectil extra", "desc": "Mago: +1 proyectil. Caballero: el corte lateral lanza una onda", "stackable": true },
-  { "id": "arcane_seal", "name": "Sello arcano", "desc": "-25 % de espera de la nova", "stackable": true, "character": "mage" }
+  { "id": "arcane_seal", "name": "Sello arcano", "desc": "-25 % de espera de la habilidad (clic der.)", "stackable": true }
 ]
