@@ -29,5 +29,10 @@
   },
   "cultist": { "frameWidth": 16, "frameHeight": 24, "anims": { "walk": [0, 3, 8] } },
   "rat": { "frameWidth": 14, "frameHeight": 8, "anims": { "walk": [0, 3, 12] } },
-  "larva": { "frameWidth": 10, "frameHeight": 6, "anims": { "walk": [0, 3, 8] } }
+  "larva": { "frameWidth": 10, "frameHeight": 6, "anims": { "walk": [0, 3, 8] } },
+  "deep_one": { "frameWidth": 16, "frameHeight": 24, "anims": { "walk": [0, 3, 8] } },
+  "shoggoth": { "frameWidth": 28, "frameHeight": 20, "anims": { "walk": [0, 3, 6] } },
+  "shoggoth_small": { "frameWidth": 16, "frameHeight": 12, "anims": { "walk": [0, 3, 8] } },
+  "night_gaunt": { "frameWidth": 20, "frameHeight": 14, "anims": { "fly": [0, 3, 10] } },
+  "mi_go": { "frameWidth": 18, "frameHeight": 14, "anims": { "fly": [0, 3, 10] } }
 }

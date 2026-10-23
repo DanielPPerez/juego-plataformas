@@ -30,7 +30,7 @@
 | `sprites/larva.png` | frames de 10×6 | Animación `walk` |
 | `sprites/deep_one.png` | frames de 16×24 | Profundo (bioma 2), animación `walk` |
 | `sprites/night_gaunt.png` | frames de 20×14 | Descarnado nocturno (bioma 2), animación `fly` |
-| `sprites/shoggoth.png` / `shoggoth_small.png` | 28×20 / 16×12 | Shoggoth menor y sus mitades (bioma 3), animación `walk` |
+| `sprites/shoggoth.png` / `shoggoth_small.png` | frames de 28×20 / 16×12 | Shoggoth menor y sus mitades (bioma 3), animación `walk` |
 | `sprites/mi_go.png` | frames de 18×14 | Mi-Go (bioma 3), animación `fly` |
 | `sprites/shot.png` | 6×6 | Proyectil enemigo (Mi-Go, lluvia de La Puerta) |
 | `sprites/exit.png` | 16×32 | Puerta de salida |

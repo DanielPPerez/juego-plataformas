@@ -38,7 +38,7 @@ export class PreloadScene extends Phaser.Scene {
           key: `${key}-${name}`,
           frames: this.anims.generateFrameNumbers(key, { start, end }),
           frameRate,
-          repeat: name === 'idle' || name === 'run' || name === 'walk' ? -1 : 0,
+          repeat: ['idle', 'run', 'walk', 'fly'].includes(name) ? -1 : 0,
         });
       }
     }
