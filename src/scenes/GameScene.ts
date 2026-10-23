@@ -337,8 +337,13 @@ export class GameScene extends Phaser.Scene {
     for (const hazard of boss.hazards) {
       if (Phaser.Geom.Intersects.RectangleToRectangle(hazard, bounds)) this.damagePlayer(boss.stats.hazardDamage, hazard.centerX);
     }
-    // Tocar al jefe: daño y se expulsa al jugador hacia el lado libre
     if (boss.dead) return;
+    // Cruzando la pantalla: solo daña si toca de verdad (esquivable con dash o doble salto)
+    if (boss.switching) {
+      if (Phaser.Geom.Intersects.RectangleToRectangle(boss.hurtbox, bounds)) this.damagePlayer(boss.stats.contactDamage, boss.hurtbox.centerX);
+      return;
+    }
+    // Tocar al jefe: daño y se expulsa al jugador hacia el lado libre
     const b = this.player.body;
     if (boss.mode === 'A' && b.left < boss.front) {
       this.damagePlayer(boss.stats.contactDamage, boss.front - 100);

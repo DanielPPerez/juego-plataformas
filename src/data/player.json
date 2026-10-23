@@ -18,6 +18,7 @@
   "dashSpeed": 500,
   "dashDurationMs": 230,
   "dashCooldownMs": 450,
+  "dashInvulnMs": 400,
   "maxHp": 5,
   "invulnMs": 1000,
   "knockback": 180,

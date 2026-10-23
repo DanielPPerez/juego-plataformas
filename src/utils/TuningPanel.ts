@@ -23,6 +23,7 @@ const RANGES: Record<keyof PlayerConfig, Range> = {
   dashSpeed: [150, 800, 10],
   dashDurationMs: [50, 400, 10],
   dashCooldownMs: [0, 1500, 50],
+  dashInvulnMs: [0, 1500, 50],
   maxHp: [1, 10, 1],
   invulnMs: [200, 2000, 50],
   knockback: [0, 400, 10],

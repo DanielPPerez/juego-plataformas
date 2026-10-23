@@ -25,6 +25,8 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
   private airJumpsLeft = 0;
   private dropTimer = 0;
   private hurtTimer = 0;
+  // Invulnerabilidad del dash: empieza con el dash y dura dashInvulnMs (más que el propio dash)
+  private dashInvulnTimer = 0;
 
   // El sprite físico es invisible; el visual se deforma (squash) sin tocar la hitbox
   protected visual: Phaser.GameObjects.Sprite;
@@ -65,9 +67,9 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     return this.dashTimer > 0;
   }
 
-  // i-frames: durante el dash y tras recibir daño
+  // i-frames: durante el dash (y un poco después) y tras recibir daño
   get invulnerable(): boolean {
-    return this.isDashing || this.hurtTimer > 0;
+    return this.isDashing || this.dashInvulnTimer > 0 || this.hurtTimer > 0;
   }
 
   // Daño base del ataque principal (el Mago lo sobrescribe con el de su rayo)
@@ -123,8 +125,10 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     this.dashCooldownTimer -= dtMs;
     this.dropTimer -= dtMs;
     this.hurtTimer -= dtMs;
-    // Parpadeo durante los i-frames
-    this.visual.setAlpha(this.hurtTimer > 0 && Math.floor(this.hurtTimer / 80) % 2 === 0 ? 0.3 : 1);
+    this.dashInvulnTimer -= dtMs;
+    // Parpadeo tras recibir daño; semitransparente mientras dura la invulnerabilidad del dash
+    const blink = this.hurtTimer > 0 && Math.floor(this.hurtTimer / 80) % 2 === 0;
+    this.visual.setAlpha(blink ? 0.3 : this.dashInvulnTimer > 0 ? 0.6 : 1);
     if (this.controls.jumpPressed) this.jumpBufferTimer = cfg.jumpBufferMs;
     if (this.onFloor) {
       this.canAirDash = true;
@@ -138,6 +142,7 @@ export class Player extends Phaser.Physics.Arcade.Sprite {
     if (this.controls.dashPressed && this.dashCooldownTimer <= 0 && (this.onFloor || this.canAirDash)) {
       this.dashTimer = cfg.dashDurationMs;
       this.dashCooldownTimer = cfg.dashCooldownMs;
+      this.dashInvulnTimer = cfg.dashInvulnMs;
       if (!this.onFloor) this.canAirDash = false;
       this.squash(1.3, 0.75);
     }

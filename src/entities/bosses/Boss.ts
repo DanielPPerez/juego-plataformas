@@ -11,7 +11,11 @@ type State = 'idle' | 'telegraph' | 'attack' | 'recover' | 'dead';
 // Cuánto asoma el jefe por el borde de la cámara, y cuánto avanza al embestir
 const VISIBLE = 72;
 const LUNGE = 70;
-const MODE_SWITCH_MS = 900;
+// Cambio de lado (El Guardián): aviso, y luego cruza la pantalla encogido y a ras de suelo
+// para que se pueda esquivar con dash o con doble salto desde una plataforma
+const SWITCH_WARN_MS = 600;
+const SWITCH_MS = 900;
+const SWITCH_SCALE = 0.5;
 
 export interface BossHooks {
   camera: Phaser.Cameras.Scene2D.Camera;
@@ -35,6 +39,8 @@ export class Boss {
   // 0 = pegado al borde izquierdo (modo A), 1 = al derecho (modo B)
   private side = 0;
   private offset = 0;
+  // Cambiando de lado: no ataca y solo hace daño si toca al jugador
+  switching = false;
   private aimX = 0;
   private beamY = 0;
   private rng: RNG;
@@ -58,8 +64,7 @@ export class Boss {
     // La marea crece desde el borde inferior de la vista
     this.flood = scene.add.rectangle(0, 0, 1, 1, 0x2a6a8a, 0.7).setOrigin(0, 1).setVisible(false).setDepth(7);
     this.beam = scene.add.rectangle(0, 0, 1, 1, 0xff60c0, 0.9).setOrigin(0, 0.5).setVisible(false).setDepth(7);
-    if (id === 'guardian') scene.time.delayedCall(200, () => this.absorbSpheres());
-  }
+    if (id === 'guardian') scene.time.delayedCall(200, () => this.absorbSpheres());  }
 
   // Entrada de El Guardián: absorbe las esferas de La Llave y La Puerta
   private absorbSpheres() {
@@ -103,14 +108,17 @@ export class Boss {
   }
 
   get hurtbox(): Phaser.Geom.Rectangle {
-    const { container: c, width: w, height: h } = this.look;
+    const c = this.look.container;
+    const w = this.look.width * c.scale;
+    const h = this.look.height * c.scale;
     return new Phaser.Geom.Rectangle(c.x - w / 2, c.y - h / 2, w, h);
   }
 
   // Borde del jefe por el que no puede pasar el jugador (derecho en modo A, izquierdo en modo B)
   get front(): number {
     const c = this.look.container;
-    return this.mode === 'A' ? c.x + this.look.width / 2 : c.x - this.look.width / 2;
+    const halfW = (this.look.width * c.scale) / 2;
+    return this.mode === 'A' ? c.x + halfW : c.x - halfW;
   }
 
   // Zonas que dañan al jugador ahora mismo
@@ -125,12 +133,15 @@ export class Boss {
   update(dtMs: number) {
     if (this.dead) return;
     const view = this.hooks.camera.worldView;
-    const w = this.look.width;
+    const c = this.look.container;
+    const w = this.look.width * c.scale;
     const leftX = view.x + VISIBLE - w / 2 + this.offset;
     const rightX = view.right - VISIBLE + w / 2 - this.offset;
-    this.look.container.setPosition(leftX + (rightX - leftX) * this.side, this.hooks.groundY - this.look.height / 2 + 24);
+    // Siempre con la base a la misma altura, aunque esté encogido
+    c.setPosition(leftX + (rightX - leftX) * this.side, this.hooks.groundY + 24 - (this.look.height * c.scale) / 2);
     this.flood.setPosition(view.x, view.bottom).setSize(view.width, this.flood.height);
     this.beam.setPosition(view.x, this.beamY).setSize(view.width, this.beam.height);
+    if (this.switching) return;
 
     // Modo B: si el jugador se queda atrás, el jefe se cura
     if (this.mode === 'B' && this.hooks.target.x < view.x + 70) {
@@ -151,7 +162,7 @@ export class Boss {
     this.look.flesh.setFillStyle(0xffffff);
     this.scene.time.delayedCall(60, () => this.look.flesh.setFillStyle(this.look.fleshColor));
     const next = this.stats.phaseAt[this.phaseIndex];
-    if (next !== undefined && this.hp <= this.maxHp * next && this.hp > 0) this.nextPhase();
+    if (!this.switching && next !== undefined && this.hp <= this.maxHp * next && this.hp > 0) this.nextPhase();
     if (this.hp <= 0) this.execute();
   }
 
@@ -159,9 +170,41 @@ export class Boss {
     const prevMode = this.mode;
     this.phaseIndex++;
     this.hooks.camera.flash(250, 160, 60, 200);
-    if (this.mode !== prevMode) {
-      this.scene.tweens.add({ targets: this, side: this.mode === 'B' ? 1 : 0, duration: MODE_SWITCH_MS, ease: 'Sine.easeInOut' });
-    }
+    if (this.mode !== prevMode) this.switchSide();
+  }
+
+  // Aviso (tiembla con el ojo en rojo), se encoge, cruza la pantalla y vuelve a su tamaño
+  private switchSide() {
+    this.switching = true;
+    this.cancelAttack();
+    const { container, flesh, eye, eyeColor } = this.look;
+    eye.setFillStyle(0xff4040);
+    this.scene.tweens.add({ targets: flesh, x: { from: -4, to: 4 }, duration: 50, yoyo: true, repeat: SWITCH_WARN_MS / 100 });
+    const tweens = this.scene.tweens;
+    const finish = () => {
+      if (this.dead) return;
+      flesh.x = 0;
+      eye.setFillStyle(eyeColor);
+      this.switching = false;
+      this.enter('idle', this.phase.idleMs);
+    };
+    tweens.add({ targets: container, scale: SWITCH_SCALE, delay: SWITCH_WARN_MS, duration: 150 });
+    tweens.add({
+      targets: this,
+      side: this.mode === 'B' ? 1 : 0,
+      delay: SWITCH_WARN_MS + 150,
+      duration: SWITCH_MS,
+      ease: 'Sine.easeInOut',
+      onComplete: () => tweens.add({ targets: container, scale: 1, duration: 200, onComplete: finish }),
+    });
+  }
+
+  // Interrumpe el ataque en curso (al cambiar de lado)
+  private cancelAttack() {
+    this.scene.tweens.killTweensOf([this.marker, this.flood, this.beam, this.spike, this.look.flesh]);
+    [this.marker, this.spike, this.flood, this.beam].forEach((s) => s.setVisible(false).setAlpha(1));
+    this.offset = 0;
+    this.enter('idle', Number.MAX_SAFE_INTEGER);
   }
 
   private enter(state: State, ms: number) {
