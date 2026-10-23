@@ -189,7 +189,7 @@ export class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.player, this.solidLayer);
     this.physics.add.collider(this.player, this.platformLayer, undefined, () => !this.player.isDropping);
     this.physics.add.collider(this.enemies, this.solidLayer);
-    this.physics.add.collider(this.enemies, this.platformLayer, undefined, (e) => !(e as Enemy).isDropping);
+    this.physics.add.collider(this.enemies, this.platformLayer);
     this.physics.add.collider(this.projectiles, this.solidLayer, kill);
     this.physics.add.collider(this.enemyShots, this.solidLayer, kill);
 

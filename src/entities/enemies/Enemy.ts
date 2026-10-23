@@ -6,17 +6,21 @@ export type EnemyStats = (typeof enemies)[keyof typeof enemies];
 
 const STUN_MS = 200;
 const JUMP_COOLDOWN_MS = 1200;
-const DROP_MS = 250;
-// Solo sube cuando está casi debajo del jugador (si no, camina de lado hasta llegar)
-const CLIMB_RANGE = 20;
+const TILE = 16;
+// Escalón más alto que puede subir (en tiles)
+const MAX_STEP_TILES = 4;
+// Si el jugador está más cerca que esto en horizontal, no salta ni se deja caer (no se le lanza encima)
+const KEEP_AWAY = 40;
+// Solo se gira hacia el jugador si está a más de esta distancia (evita giros constantes)
+const TURN_DEADZONE = 16;
 const LUNGE_RANGE = 56;
 const LUNGE_SPEED = 170;
 
 // Enemigo terrestre (gravedad y límites los pone el grupo de GameScene). Comportamiento según enemies.json:
 // sight/sightY → distancia a la que ve al jugador y lo persigue; jumps → salta huecos y muros;
-// climbs → al perseguir, sube a la superficie donde está el jugador (solo si está de pie en ella y justo
-// encima) y se deja caer si está más abajo; lunge → salta hacia el jugador cuando está cerca y a su altura;
-// splitsInto → al morir se divide en dos enemigos de ese tipo.
+// climbs → cambia de altura como si caminara: sube por el inicio de una plataforma o por un escalón
+// alcanzable, y baja dejándose caer por el final; nunca por el medio ni con el jugador justo al lado;
+// lunge → salta hacia el jugador cuando está cerca y a su altura; splitsInto → al morir se divide en dos.
 // Sin jumps ni climbs se gira en muros y bordes. En el aire va a airSpeed.
 export class Enemy extends Phaser.Physics.Arcade.Sprite {
   declare body: Phaser.Physics.Arcade.Body;
@@ -25,7 +29,6 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
   private dir: 1 | -1 = -1;
   private stunTimer = 0;
   private jumpTimer = 0;
-  private dropTimer = 0;
 
   constructor(
     scene: Phaser.Scene,
@@ -41,14 +44,8 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (scene.anims.exists(`${stats.texture}-walk`)) this.play(`${stats.texture}-walk`);
   }
 
-  // Mientras es true, la escena ignora su colisión con plataformas atravesables
-  get isDropping(): boolean {
-    return this.dropTimer > 0;
-  }
-
   update(dtMs: number, target: Phaser.Physics.Arcade.Sprite) {
     this.jumpTimer -= dtMs;
-    this.dropTimer -= dtMs;
     if (this.stunTimer > 0) {
       this.stunTimer -= dtMs;
       return;
@@ -60,7 +57,7 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     // Diferencia de altura entre los pies (positivo = el jugador está más abajo)
     const dy = targetBody.bottom - b.bottom;
     const sees = s.sight > 0 && Math.abs(dx) < s.sight && Math.abs(dy) < s.sightY;
-    if (sees && Math.abs(dx) > 4) this.dir = dx > 0 ? 1 : -1;
+    if (sees && Math.abs(dx) > TURN_DEADZONE) this.dir = dx > 0 ? 1 : -1;
 
     const onFloor = b.blocked.down;
     const wallAhead = (this.dir < 0 && b.blocked.left) || (this.dir > 0 && b.blocked.right);
@@ -70,12 +67,18 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
     if (onFloor && s.lunge && sees && Math.abs(dx) < LUNGE_RANGE && Math.abs(dy) < 16) {
       if (this.jump()) speed = LUNGE_SPEED;
     } else if (onFloor && s.climbs && sees) {
-      const onPlatform = this.terrainAt(b.center.x, b.bottom + 2) === Tile.Platform;
+      const near = Math.abs(dx) < KEEP_AWAY;
       const playerAbove = dy < -24 && targetBody.blocked.down;
-      if ((playerAbove && Math.abs(dx) < CLIMB_RANGE) || wallAhead) this.jump();
-      else if (dy > 8 && onPlatform) this.dropTimer = DROP_MS;
-      // Si el jugador está más abajo se deja caer por el borde; si no, espera en él
-      else if (ledgeAhead && dy <= 8) speed = 0;
+      const playerBelow = dy > 24;
+      if (wallAhead) {
+        // Escalón: subirlo solo si es alcanzable y el jugador no está encima; si no, esperar
+        if (near || !this.stepReachable() || !this.jump()) speed = 0;
+      } else if (playerAbove && !near && this.platformStartsAhead()) {
+        this.jump();
+      } else if (ledgeAhead && (!playerBelow || near)) {
+        // Bajar solo dejándose caer por el final de la plataforma, y no encima del jugador
+        speed = 0;
+      }
     } else if (onFloor && (wallAhead || ledgeAhead) && s.jumps) {
       this.jump();
     } else if (wallAhead && !sees) {
@@ -101,6 +104,25 @@ export class Enemy extends Phaser.Physics.Arcade.Sprite {
       this.destroy();
     }
     return this.hp <= 0;
+  }
+
+  // ¿El muro que tiene delante cabe en un salto?
+  private stepReachable(): boolean {
+    const x = this.x + this.dir * (this.body.halfWidth + 4);
+    let height = 0;
+    while (height <= MAX_STEP_TILES && this.terrainAt(x, this.body.bottom - 1 - height * TILE) === Tile.Solid) height++;
+    return height <= MAX_STEP_TILES;
+  }
+
+  // ¿Empieza justo delante una plataforma más alta? (solo sube por el inicio, nunca por el medio)
+  private platformStartsAhead(): boolean {
+    const ahead = this.x + this.dir * (this.body.halfWidth + 6);
+    const here = ahead - this.dir * TILE;
+    for (let k = 2; k <= MAX_STEP_TILES; k++) {
+      const y = this.body.bottom - 1 - k * TILE;
+      if (this.terrainAt(ahead, y) !== Tile.Empty && this.terrainAt(here, y) === Tile.Empty) return true;
+    }
+    return false;
   }
 
   private jump(): boolean {

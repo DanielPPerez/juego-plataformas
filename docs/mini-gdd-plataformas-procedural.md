@@ -114,7 +114,7 @@ Criaturas de los relatos originales de Lovecraft, adaptadas a lo medieval.
 
 | Nombre                                      | Bioma | Comportamiento                                                   | Reutiliza de      | Origen                                |
 | ------------------------------------------- | ----- | ---------------------------------------------------------------- | ----------------- | ------------------------------------- |
-| **Cultista**                          | 1     | Patrulla; al ver al jugador lo persigue saltando a plataformas más altas y dejándose caer a las más bajas| —                | Cultos de varios relatos              |
+| **Cultista**                          | 1     | Patrulla; al ver al jugador lo persigue cambiando de altura solo por los bordes (sube por el inicio de una plataforma o un escalón, baja por el final) y nunca se le lanza encima| —                | Cultos de varios relatos              |
 | **Rata del muro**                     | 1     | Enjambre de 3; corre en línea recta y salta huecos              | Patrulla          | *The Rats in the Walls*             |
 | **Profundo**                          | 2     | Patrulla y salta hacia el jugador si está cerca                 | Cultista          | *The Shadow over Innsmouth*         |
 | **Descarnado nocturno** (Night-gaunt) | 2     | Vuela, agarra al jugador y lo suelta desde arriba                | — (volador base) | *The Dream-Quest of Unknown Kadath* |
